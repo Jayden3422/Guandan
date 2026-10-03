@@ -37,6 +37,12 @@ playDistance = 10.5
 -- Height the played cards are dropped from.
 playHeight = 1.6
 
+-- A row of played cards holds at most this many; more cards are split over several rows, so that a big play
+-- stays in front of its player instead of reaching the neighbours' hand zones and play areas.
+playRowSize = 10
+-- How far apart the rows are.  NOTE:  Cards right above one another stick together below 1.5.
+playRowStep = 1.6
+
 -- Played cards are spaced a full card apart, and squeezed together once the row gets wider than this.
 playRowWidth = 12
 cardPitchMax = 2.3
@@ -652,6 +658,30 @@ function onGuandanPass(params)
 end
 
 
+-- Called by the Collect Cards tool before it takes every card:  let go of the stacked hands (which stay
+-- switched on for the next deal), end card picking, and forget the plays on the table.
+function onCollectCards()
+
+	for player_color, stack in pairs(stacks) do
+		for guid in pairs(stack.guids) do
+			local card = getObjectFromGUID(guid)
+			if card ~= nil then
+				card.clearButtons()
+				card.setHiddenFrom({})
+			end
+		end
+		stack.guids = {}
+	end
+
+	picking = {}
+	updateButtons()
+
+	lastPlay = {}
+	destinations = {}
+
+end
+
+
 -- The cards lying in a player's play area, from left to right.  Cards still being held are left out.
 -- Returns nil for spectators, who have no hand zones.
 function getPlayAreaCards(player_color)
@@ -807,26 +837,41 @@ function playCards(player_color, cards)
 	local rotation = seat.rotation
 	local center = Vector(seat.position.x, 0, seat.position.z) + seat.forward * playDistance
 
-	local pitch = 0
-	if #cards > 1 then
-		pitch = math.max(cardPitchMin, math.min(cardPitchMax, playRowWidth / (#cards - 1)))
-	end
+	-- Rows of equal length, read like text:  the first row is the furthest from the player, the last one
+	-- lies where a single row would, on top of the lower part of the row before it.
+	local rows = math.ceil(#cards / playRowSize)
+	local rowSize = math.ceil(#cards / rows)
 
 	local placements = {}
 	local guids = {}
+	local reach = 0
 
 	for i, card in ipairs(cards) do
 
-		local position = center + right * ((i - (#cards + 1) / 2) * pitch)
-		-- Each card starts a little higher than the one to its left, so overlapping cards land in order.
+		local row = math.ceil(i / rowSize)
+		local column = i - (row - 1) * rowSize
+		local columns = math.min(rowSize, #cards - (row - 1) * rowSize)
+
+		local pitch = 0
+		if columns > 1 then
+			pitch = math.max(cardPitchMin, math.min(cardPitchMax, playRowWidth / (columns - 1)))
+		end
+
+		local across = (column - (columns + 1) / 2) * pitch
+		local ahead = (rows - row) * playRowStep
+
+		local position = center + right * across + seat.forward * ahead
+		-- Each card starts a little higher than the one before it, so overlapping cards land in order.
 		position.y = playHeight + 0.06 * i
 
 		table.insert(placements, {guid = card.guid, position = position, rotation = rotation})
 		table.insert(guids, card.guid)
 
+		reach = math.max(reach, math.sqrt(across * across + ahead * ahead))
+
 	end
 
-	lastPlay[player_color] = {guids = guids, x = center.x, z = center.z, radius = (#cards - 1) * pitch / 2 + 3}
+	lastPlay[player_color] = {guids = guids, x = center.x, z = center.z, radius = reach + 3}
 
 	placeCards(placements, 3)
 
@@ -857,7 +902,8 @@ function placeCards(placements, attempts)
 
 			local card = getObjectFromGUID(placement.guid)
 
-			if card ~= nil and card.held_by_color == nil then
+			-- A locked card has been taken by something else since (collecting, a stacked hand).
+			if card ~= nil and card.held_by_color == nil and not card.getLock() then
 				local position = card.getPosition()
 				local dx = position.x - placement.position.x
 				local dz = position.z - placement.position.z

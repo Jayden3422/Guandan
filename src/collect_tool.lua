@@ -1,5 +1,5 @@
 -- Collect Cards / Deal Cards tool
--- One side collects every card that is not in a hand, each deck into its own pile.  The other side deals one deck.
+-- One side collects every card, each deck into its own pile.  The other side deals one deck.
 -- The pile of each deck is configured in the Global script (deckPilePositions).
 -- The deck that gets dealt is chosen with the Deck Selector tool.
 
@@ -10,11 +10,20 @@ deckSelectorGuid = "9a7e05"
 deckSize = 108
 dealCount = 27
 
+-- While players still hold cards, collecting takes a second click within this many seconds.
+confirmTimeout = 5
+
+-- How long the hand zones get to let go of their cards before the cards are grouped into decks.
+releaseTime = 0.6
+
 -- How long to wait for the collected cards to form complete decks before giving up.
 collectTimeout = 10
 
--- True while a collection is waiting for the cards to arrive.
+-- True while a collection is under way.
 local collecting = false
+
+-- Until when a second click confirms collecting the cards the players still hold.
+local confirmUntil = nil
 
 
 function onLoad()
@@ -26,6 +35,7 @@ function onLoad()
 end
 
 
+-- Whether a player holds the card:  in their hand, in their play area, or in their stacked hand.
 function isInHand(object)
 
 	-- A stacked hand: its cards are locked in place by the Global script instead of being held by a Hand zone.
@@ -44,16 +54,17 @@ function isInHand(object)
 end
 
 
--- Send a card or a deck, face down, to the pile of the deck it belongs to.
-function sendToPile(object)
+-- Where the next card of a deck waits to be grouped:  above the deck's pile, each one a little higher than the last
+-- and clear of a deck object lying on the pile.  counts keeps how many were placed so far, by deck ID.
+function nextPilePosition(card, counts)
 
-	-- A deck must not be caught by the hand zones it passes through.
-	if object.name == "Deck" then
-		object.use_hands = false
-	end
+	local deckId = Global.call("getDeckId", {object = card}) or 0
+	local position = Global.call("getPilePosition", {object = card})
 
-	object.setRotationSmooth(Vector(0, 0, 180), false, true)
-	object.setPositionSmooth(Global.call("getPilePosition", {object = object}), false, true)
+	counts[deckId] = (counts[deckId] or 0) + 1
+	position.y = position.y + 1.5 + 0.02 * counts[deckId]
+
+	return position
 
 end
 
@@ -71,50 +82,83 @@ function splitDeck(deck)
 end
 
 
--- Gather everything that is not in a hand into one deck object per deck, and send those to their piles.
--- The cards are grouped where they lie instead of travelling one by one:
--- a loose card gliding across the table is caught by any play area it passes through.
+-- First step of collecting:  take every card away from the players and put it above its deck's pile.
+-- Cards are teleported instead of gliding across the table, where any hand zone they pass through would catch them.
+function releaseCards()
+
+	-- Stacked hands, card picking and the plays on the table all end here.
+	Global.call("onCollectCards")
+
+	local counts = {}
+
+	for i, object in pairs(getObjects()) do
+		if object.held_by_color == nil then
+
+			if object.name == "Deck" then
+
+				if Global.call("getDeckId", {object = object}) == nil then
+					splitDeck(object)
+				end
+
+			elseif object.type == "Card" then
+
+				-- A locked card is let go by the hand zone holding it, and stays where it is put: it neither falls nor merges.
+				object.setLock(true)
+				object.setRotation(Vector(0, 0, 180))
+				object.setPosition(nextPilePosition(object, counts))
+
+			end
+
+		end
+	end
+
+end
+
+
+-- Second step of collecting:  group the cards and deck objects of each deck into one deck object on its pile.
 function gatherDecks()
 
 	-- The cards and deck objects of each deck, by deck ID.
 	local groups = {}
+	local counts = {}
 
 	for i, object in pairs(getObjects()) do
-		if (object.type == "Card" or object.name == "Deck") and not isInHand(object) then  --only do this on cards, and leave the cards held in a player's Hand alone
+		if (object.type == "Card" or object.name == "Deck") and object.held_by_color == nil then
 			local deckId = Global.call("getDeckId", {object = object})
 			if deckId ~= nil then
+
+				-- Everything is brought to the pile first, so that grouping only moves cards a short way, away from any hand zone.
+				if object.type == "Card" then
+					object.setRotation(Vector(0, 0, 180))
+					object.setPosition(nextPilePosition(object, counts))
+					-- The cards go into the deck as they are now: unlocked and able to be held in a hand, ready to be dealt.
+					object.setLock(false)
+				else
+					-- A deck must not be caught by a hand zone.
+					object.use_hands = false
+					object.setRotation(Vector(0, 0, 180))
+					object.setPosition(Global.call("getPilePosition", {object = object}))
+				end
+
 				groups[deckId] = groups[deckId] or {}
 				table.insert(groups[deckId], object)
+
 			end
 		end
 	end
 
 	for deckId, objects in pairs(groups) do
 
-		-- Gather around a deck object if there is one, else around the first card.
-		local anchor = objects[1]
-		for _, object in ipairs(objects) do
-			if object.name == "Deck" then
-				anchor = object
-				break
-			end
-		end
-
-		-- Put the loose cards right above it, so they only have a short way to go when grouped.
-		local position = anchor.getPosition()
-		for i, object in ipairs(objects) do
-			if object.type == "Card" and object.guid ~= anchor.guid then
-				object.setPosition({position.x, position.y + 1 + 0.02 * i, position.z})
-			end
-		end
-
-		local pile = anchor
+		local pile = objects[1]
 		if #objects > 1 then
 			pile = group(objects)[1]
 		end
 
-		if pile ~= nil then
-			sendToPile(pile)
+		-- A deck object newly made of loose cards appears where they were: put it on the pile as well.
+		if pile ~= nil and pile.name == "Deck" then
+			pile.use_hands = false
+			pile.setRotation(Vector(0, 0, 180))
+			pile.setPosition(Global.call("getPilePosition", {object = pile}))
 		end
 
 	end
@@ -122,22 +166,20 @@ function gatherDecks()
 end
 
 
--- True once everything that is not in a hand has ended up in complete decks.
+-- True once every card has ended up in a complete deck.
 function allCollected()
 
 	local decks = 0
 
 	for i, object in pairs(getObjects()) do
-		if not isInHand(object) then
-			if object.type == "Card" then
+		if object.type == "Card" then
+			return false
+		end
+		if object.name == "Deck" then
+			if object.getQuantity() ~= deckSize then
 				return false
 			end
-			if object.name == "Deck" then
-				if object.getQuantity() ~= deckSize then
-					return false
-				end
-				decks = decks + 1
-			end
+			decks = decks + 1
 		end
 	end
 
@@ -152,23 +194,26 @@ function collectCards()
 		return
 	end
 
-	-- Take apart the deck objects that mix several decks, and give their cards a moment to appear.
-	local split = false
-
+	-- Taking the cards the players still hold ends their round: ask for a second click first.
+	local held = false
 	for i, object in pairs(getObjects()) do
-		if object.name == "Deck" and not isInHand(object) and Global.call("getDeckId", {object = object}) == nil then
-			splitDeck(object)
-			split = true
+		if object.type == "Card" and isInHand(object) then
+			held = true
+			break
 		end
 	end
 
-	if split then
-		Wait.time(gatherDecks, 1)
-	else
-		gatherDecks()
+	if held and (confirmUntil == nil or Time.time > confirmUntil) then
+		confirmUntil = Time.time + confirmTimeout
+		broadcastToAll("还有玩家手里有牌：" .. confirmTimeout .. " 秒内再点一次，连手里的牌一起收走", {1,1,1})
+		return
 	end
 
+	confirmUntil = nil
 	collecting = true
+
+	releaseCards()
+	Wait.time(gatherDecks, releaseTime)
 
 	-- Once the cards have formed complete decks: shuffle them and turn the tool to its deal side.
 	Wait.condition(
@@ -185,7 +230,7 @@ function collectCards()
 		collectTimeout,
 		function()
 			collecting = false
-			broadcastToAll("牌还没收齐（可能还有牌在玩家手里），收齐后再点一次", {1,1,1})
+			broadcastToAll("牌没有收齐成整副（可能有牌被拿着或缺牌），处理后再点一次", {1,1,1})
 		end
 	)
 
