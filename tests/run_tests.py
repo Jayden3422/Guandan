@@ -9,11 +9,10 @@ and the .NET SDK, version 6 or later.
 
 Usage:  python run_tests.py [-v] [game folder]
 
--v lists every check instead of only the failed ones. The game folder defaults to the TTS_DIR environment variable, or else to the folder two levels
+-v lists every check instead of only the failed ones.
+The game folder defaults to the TTS_DIR environment variable, or else to the folder two levels
 above this repository, which is right when the repository sits in <game folder>/Modding/.
 """
-import io
-import json
 import os
 import shutil
 import subprocess
@@ -27,27 +26,11 @@ SRC = os.path.join(ROOT, "src")
 VERBOSE = "-v" in sys.argv[1:]
 ARGUMENTS = [argument for argument in sys.argv[1:] if argument != "-v"]
 
-# Importing the build script must not leave a __pycache__ folder in the repository.
-sys.dont_write_bytecode = True
-sys.path.insert(0, SRC)
-import build  # noqa: E402
-
 
 def game_folder():
     if ARGUMENTS:
         return ARGUMENTS[0]
     return os.environ.get("TTS_DIR") or os.path.normpath(os.path.join(ROOT, "..", ".."))
-
-
-def hooked_sort_tool(work):
-    """The Sort Hand Tool LR script as the build changes it, written to a file."""
-    with io.open(build.SOURCE, encoding="utf-8-sig") as f:
-        save = json.load(f)
-    script = next(o["LuaScript"] for o in save["ObjectStates"] if o.get("Nickname") == "Sort Hand Tool LR")
-    path = os.path.join(work, "sort_tool_lr.lua")
-    with io.open(path, "w", encoding="utf-8", newline="") as f:
-        f.write(build.hook_sort_tool(script))
-    return path
 
 
 def main():
@@ -73,7 +56,6 @@ def main():
             os.path.join(SRC, "global.lua"), os.path.join(HERE, "test_global.lua"),
             os.path.join(SRC, "collect_tool.lua"), os.path.join(HERE, "test_collect.lua"),
             os.path.join(SRC, "deck_selector.lua"), os.path.join(HERE, "test_selector.lua"),
-            hooked_sort_tool(work), os.path.join(HERE, "test_sort_tool.lua"),
         ]
         run = subprocess.run(["dotnet", os.path.join(work, "out", "harness.dll"), managed] + files,
                              capture_output=True, text=True, encoding="utf-8", errors="replace")

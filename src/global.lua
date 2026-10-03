@@ -5,10 +5,12 @@
 --  ======================================================================
 
 -- The scripting hotkeys (i.e. Numpad #).
+-- sortHotKey:  sorts the hand in a row, the other way round each time (same as the "正序" / "倒序" button).
 -- playHotKey:  starts picking cards, then plays the cards in the play area (same as the "选牌" / "出牌" button).
 -- returnHotKey:  takes the cards in the play area back in hand (same as the "收回" button).
--- stackHotKey:  stacks the hand in columns, one per card number (same as the Sort Hand Tool Stack).
+-- stackHotKey:  stacks the hand in columns, one per card number (same as the "竖摞" button).
 -- groupHotKey:  turns the cards in the play area into a group (same as the "理牌" button).
+sortHotKey = 1
 playHotKey = 2
 returnHotKey = 3
 stackHotKey = 4
@@ -100,6 +102,9 @@ local picking = {}
 
 -- The hand zone each clicked card is on its way to, by card GUID.
 local destinations = {}
+
+-- The players whose next sort is from high to low, by player color.  Sorting goes the other way round each time.
+local sortDescending = {}
 
 -- The players whose hand is stacked in columns, by player color:  {guids = {[guid] = true, ...}}
 -- Stacked cards are locked in place by the script instead of being held by the hand zone.
@@ -202,7 +207,9 @@ end
 -- Support scripting hotkeys NumPad 2 and 3.
 function onScriptingButtonDown(index, player_color)
 
-	if index == playHotKey then
+	if index == sortHotKey then
+		sortHand(player_color)
+	elseif index == playHotKey then
 		if picking[player_color] then
 			playFromPlayArea(player_color)
 		else
@@ -212,7 +219,7 @@ function onScriptingButtonDown(index, player_color)
 		stopPicking(player_color)
 		returnPlayAreaToHand(player_color)
 	elseif index == stackHotKey then
-		stackHand({color = player_color})
+		stackHand(player_color)
 	elseif index == groupHotKey then
 		groupPlayArea(player_color)
 	end
@@ -241,6 +248,22 @@ function onReturnButtonClick(player)
 
 	stopPicking(player.color)
 	returnPlayAreaToHand(player.color)
+
+end
+
+
+-- The on-screen "正序" and "倒序" buttons:  the one a player sees says which way their hand is sorted next.
+function onSortButtonClick(player)
+
+	sortHand(player.color)
+
+end
+
+
+-- The on-screen "竖摞" button.
+function onStackButtonClick(player)
+
+	stackHand(player.color)
 
 end
 
@@ -283,19 +306,30 @@ end
 -- Show "出牌" to the players who are picking cards, and "选牌" to everyone else.
 function updateButtons()
 
-	local pickingColors = {}
-	local otherColors = {}
+	-- Two buttons share one spot:  the second one is shown to the players listed in switched, the first one to everyone else.
+	local function showPair(firstButton, secondButton, switched)
 
-	for _, player_color in ipairs(uiColorList) do
-		if picking[player_color] then
-			table.insert(pickingColors, player_color)
-		else
-			table.insert(otherColors, player_color)
+		local switchedColors = {}
+		local otherColors = {}
+
+		for _, player_color in ipairs(uiColorList) do
+			if switched[player_color] then
+				table.insert(switchedColors, player_color)
+			else
+				table.insert(otherColors, player_color)
+			end
 		end
+
+		UI.setAttributes(secondButton, {active = #switchedColors > 0 and "true" or "false", visibility = table.concat(switchedColors, "|")})
+		UI.setAttributes(firstButton, {visibility = #switchedColors > 0 and table.concat(otherColors, "|") or ""})
+
 	end
 
-	UI.setAttributes("guandanPlayButton", {active = #pickingColors > 0 and "true" or "false", visibility = table.concat(pickingColors, "|")})
-	UI.setAttributes("guandanPickButton", {visibility = #pickingColors > 0 and table.concat(otherColors, "|") or ""})
+	-- "出牌" for the players who are picking cards, "选牌" for the others.
+	showPair("guandanPickButton", "guandanPlayButton", picking)
+
+	-- "倒序" for the players whose next sort is descending, "正序" for the others.
+	showPair("guandanSortButton", "guandanSortDescendingButton", sortDescending)
 
 end
 
@@ -440,10 +474,8 @@ end
 
 
 -- Stack the player's hand in columns, and keep it stacked:  cards that reach the hand later join the stack.
--- Called by the Sort Hand Tool Stack:  Global.call("stackHand", {color = player_color})
-function stackHand(params)
+function stackHand(player_color)
 
-	local player_color = params.color
 	local player = Player[player_color]
 
 	-- Spectators have no hand.
@@ -453,7 +485,7 @@ function stackHand(params)
 
 	if stacks[player_color] == nil then
 		stacks[player_color] = {guids = {}}
-		broadcastToColor("竖摞：点牌放进出牌区；点正序或倒序排序恢复成一排", player_color, {1,1,1})
+		broadcastToColor("竖摞：点牌放进出牌区；点“正序 / 倒序”恢复成一排", player_color, {1,1,1})
 	end
 
 	absorbHand(player_color)
@@ -462,29 +494,62 @@ function stackHand(params)
 end
 
 
--- Put the stacked cards back in the hand zone as a row, in order.  Returns whether the hand was stacked.
--- Called by the other Sort Hand Tools before they sort:  Global.call("unstackHand", {color = player_color})
-function unstackHand(params)
+-- Sort the player's hand in a row:  from low to high the first time, the other way round the next time, and so on.
+-- A stacked hand goes back in the hand zone as a row.  Groups are left alone.
+function sortHand(player_color)
 
-	local player_color = params.color
-	local stack = stacks[player_color]
+	local player = Player[player_color]
 
-	if stack == nil then
-		return false
+	-- Spectators have no hand.
+	if player == nil or player.getHandCount() == 0 then
+		return
 	end
 
+	local cards = {}
+	local positions = {}
+
+	-- The hand zone lists its cards from left to right.
+	for _, object in ipairs(player.getHandObjects()) do
+		if object.type == "Card" and object.held_by_color == nil then
+			table.insert(cards, object)
+			table.insert(positions, object.getPosition())
+		end
+	end
+
+	local stack = stacks[player_color]
 	stacks[player_color] = nil
 
-	local cards = getStackCards(stack)
-	local seat = getSeat(player_color)
+	if stack ~= nil then
 
-	-- The hand zone arranges its cards by where they are from left to right: line them up in order.
-	for i, card in ipairs(cards) do
-		card.setPosition(seat.position + seat.right * ((i - (#cards + 1) / 2) * 0.3))
-		unstackCard(card)
+		for _, card in ipairs(getStackCards(stack)) do
+			table.insert(cards, card)
+		end
+
+		-- The stacked cards have no place in the row yet. The hand zone arranges its cards by where they are
+		-- from left to right, so lining all the cards up in order is enough.
+		local seat = getSeat(player_color)
+		for i = 1, #cards do
+			positions[i] = seat.position + seat.right * ((i - (#cards + 1) / 2) * 0.3)
+		end
+
 	end
 
-	return true
+	if sortDescending[player_color] then
+		table.sort(cards, sortLogicDescending)
+	else
+		table.sort(cards, sortLogic)
+	end
+
+	-- In a hand that was a row already, the cards trade places.
+	for i, card in ipairs(cards) do
+		card.setPosition(positions[i])
+		if card.getLock() then
+			unstackCard(card)
+		end
+	end
+
+	sortDescending[player_color] = not sortDescending[player_color] or nil
+	updateButtons()
 
 end
 
@@ -1221,5 +1286,25 @@ function sortLogic(card1, card2)
 	end
 
 	return card1.guid < card2.guid
+
+end
+
+
+-- Comparison function used by table.sort():  by card number from high to low.
+-- Cards of the same number keep the order of their suits, except the Jokers, where the bigger one comes first.
+function sortLogicDescending(card1, card2)
+
+	local card1NumberIndex = refCardOrderIndex[card1.getName()] or 99
+	local card2NumberIndex = refCardOrderIndex[card2.getName()] or 99
+
+	if card1NumberIndex ~= card2NumberIndex then
+		return card1NumberIndex > card2NumberIndex
+	end
+
+	if card1.getName() == "Joker" and card1.getDescription() ~= card2.getDescription() then
+		return sortLogic(card2, card1)
+	end
+
+	return sortLogic(card1, card2)
 
 end

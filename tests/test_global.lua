@@ -69,7 +69,7 @@ check(near(xs[1], -5.97) and near(xs[4], 6.03) and near(zs[1], -14.5) and near(z
 onPickButtonClick({color = "Grey"})
 check(#messages == 0 and uiAttributes.guandanPlayButton == nil, "spectator: nothing happens")
 local white = deal("White", {{"King", "Spade"}, {"Three", "Heart"}, {"Joker", "Color"}, {"Three", "Club"}, {"Joker", "BW"}, {"Ace", "Diamond"}})
-onScriptingButtonDown(1, "White")
+onScriptingButtonDown(9, "White")
 check(uiAttributes.guandanPlayButton == nil, "other hotkeys are ignored")
 
 -- 2. Picking: the buttons swap for the picking player only.
@@ -278,7 +278,7 @@ local function hiddenFrom(card, color)
 	return false
 end
 
-stackHand({color = "Grey"})
+stackHand("Grey")
 check(#messages == 0, "spectators cannot stack")
 local aceS, twoC, kingS, aceH, twoH, aceD = hand("White", "Ace", "Spade"), hand("White", "Two", "Club"), hand("White", "King", "Spade"), hand("White", "Ace", "Heart"), hand("White", "Two", "Heart"), hand("White", "Ace", "Diamond")
 local jokerC, jokerB = hand("White", "Joker", "Color"), hand("White", "Joker", "BW")
@@ -336,7 +336,7 @@ check(near(x(dealt[1]) - x(twoH), 17.8 / 13) and near(x(jokerB) - x(twoH), 17.8)
 
 -- 20. Other seats stack towards their own player.
 local purpleA, purpleB = hand("Purple", "Nine", "Heart"), hand("Purple", "Nine", "Club")
-stackHand({color = "Purple"})
+stackHand("Purple")
 check(near(x(purpleA), 18.23) and near(x(purpleB), 18.85) and near(z(purpleA), z(purpleB)), "Purple's column runs towards Purple")
 check(near(purpleA.getRotation().y % 360, 90), "Purple's stacked cards are upright for Purple")
 
@@ -349,21 +349,34 @@ onStackCardClick(purpleA, "Purple")
 settle()
 check(zoneOf(purpleA) == 2, "and stay clickable")
 
--- 22. Unstacking puts the cards back in the hand zone, in order.
-check(unstackHand({color = "White"}) == true, "unstacking reports that the hand was stacked")
+-- 22. Sorting puts a stacked hand back in the hand zone as a row, from low to high the first time.
+sortHand("Grey")
+check(uiAttributes.guandanSortDescendingButton == nil or uiAttributes.guandanSortDescendingButton.active == "false", "spectators cannot sort")
+onSortButtonClick(whitePlayer)
 local allFree = true
 for _, card in ipairs({twoH, twoC, aceH, aceD, aceS, jokerB, jokerC, dealt[1], dealt[11]}) do
 	if card.locked or #card.buttons ~= 0 or zoneOf(card) ~= 1 then allFree = false end
 end
-check(allFree, "unstacked cards are unlocked and back in the hand zone")
-check(x(twoH) < x(twoC) and x(twoC) < x(dealt[1]) and x(dealt[11]) < x(aceH) and x(aceS) < x(jokerB) and x(jokerB) < x(jokerC), "lined up in order from left to right")
+check(allFree, "the stacked cards are unlocked and back in the hand zone")
+check(x(twoH) < x(twoC) and x(twoC) < x(dealt[1]) and x(dealt[11]) < x(aceH) and x(aceS) < x(jokerB) and x(jokerB) < x(jokerC), "lined up from low to high")
 check(hiddenFrom(twoH, "Green"), "still hidden until the hand zone has taken over")
 settle()
 check(#twoH.hiddenFrom == 0, "then no longer hidden by the script")
-check(unstackHand({color = "White"}) == false, "unstacking a hand that is not stacked does nothing")
 onObjectEnterZone({type = "Hand"}, twoH)
 settle()
-check(not twoH.locked, "and cards arriving in it are left alone")
+check(not twoH.locked, "cards arriving in a hand that is no longer stacked are left alone")
+check(uiAttributes.guandanSortDescendingButton.visibility == "White" and not string.find(uiAttributes.guandanSortButton.visibility, "White") and string.find(uiAttributes.guandanSortButton.visibility, "Green") ~= nil, "the sort button now offers the other order, to that player only")
+
+-- 22b. The next sort is from high to low, the cards of the row trading places; then from low to high again.
+local leftmost, rightmost = x(twoH), x(jokerC)
+onScriptingButtonDown(1, "White")
+check(x(jokerC) < x(jokerB) and x(jokerB) < x(aceH) and x(aceH) < x(aceD) and x(aceD) < x(aceS) and x(aceS) < x(dealt[11]) and x(dealt[1]) < x(twoH) and x(twoH) < x(twoC), "the second sort is from high to low, the bigger Joker first")
+check(near(x(jokerC), leftmost) and near(x(twoC), rightmost) and zoneOf(aceD) == 1, "the cards trade places within the row")
+check(uiAttributes.guandanSortDescendingButton.active == "false" and uiAttributes.guandanSortButton.visibility == "", "and the button is back to the first order")
+onSortButtonClick(whitePlayer)
+check(near(x(twoH), leftmost) and near(x(jokerC), rightmost), "the third sort is from low to high again")
+onSortButtonClick(whitePlayer)
+onSortButtonClick(whitePlayer)
 
 -- 23. Groups: the cards in the play area become a column of their own, to the left of the hand.
 settle()
@@ -387,11 +400,12 @@ check(not nineC.locked and zoneOf(nineC) == 1, "the rest of the hand is left alo
 stage("White", {nineS, nineC})
 onGroupButtonClick(whitePlayer)
 check(near(x(nineC), 0.03 - 11.7 - 2.5) and near(x(nineS), x(nineC)) and near(x(three), 0.03 - 11.7), "a second group goes further left")
-stackHand({color = "White"})
+onStackButtonClick(whitePlayer)
 check(kingH.locked and near(x(kingH), 0.03) and near(x(three), 0.03 - 11.7) and near(z(five), -19.24) and three.buttons[1].click_function == "onGroupCardClick", "stacking the hand does not touch the groups")
-unstackHand({color = "White"})
+onSortButtonClick(whitePlayer)
 settle()
-check(not kingH.locked and three.locked and near(x(three), 0.03 - 11.7), "nor does putting it back in a row")
+check(not kingH.locked and three.locked and near(x(three), 0.03 - 11.7), "nor does sorting it back into a row")
+onSortButtonClick(whitePlayer)
 
 -- 25. A left click on any card of a group sends the whole group to the play area, and the group is gone.
 onGroupCardClick(four, "White", true)
@@ -440,6 +454,3 @@ globalFunctions.getDeckId = getDeckId
 globalFunctions.getPilePosition = getPilePosition
 globalFunctions.onGuandanPass = onGuandanPass
 globalFunctions.onCollectCards = onCollectCards
-globalFunctions.stackHand = stackHand
-globalFunctions.unstackHand = unstackHand
-globalSortLogic = sortLogic

@@ -1,4 +1,46 @@
 <!-- 掼蛋 Guandan - Global UI -->
+<!-- One column of buttons in the lower right corner, from top to bottom: -->
+<!-- 正序 / 倒序, 竖摞, 选牌 / 出牌, 收回, 理牌 -->
+
+<!-- "正序" and "倒序" share one spot: the script shows each player the one that says which way their hand is sorted next. -->
+<Button
+    id="guandanSortButton"
+    onClick="onSortButtonClick"
+    rectAlignment="LowerRight"
+    offsetXY="-20 288"
+    width="150"
+    height="46"
+    fontSize="22"
+    colors="#00695C|#00796B|#004D40|#555555"
+    textColor="#FFFFFF"
+    tooltip="把手牌从小到大排成一排；之后这个按钮变成“倒序”（小键盘 1）"
+    tooltipPosition="Left">正序</Button>
+<Button
+    id="guandanSortDescendingButton"
+    active="false"
+    onClick="onSortButtonClick"
+    rectAlignment="LowerRight"
+    offsetXY="-20 288"
+    width="150"
+    height="46"
+    fontSize="22"
+    colors="#00695C|#00796B|#004D40|#555555"
+    textColor="#FFFFFF"
+    tooltip="把手牌从大到小排成一排；之后这个按钮变回“正序”（小键盘 1）"
+    tooltipPosition="Left">倒序</Button>
+<Button
+    id="guandanStackButton"
+    onClick="onStackButtonClick"
+    rectAlignment="LowerRight"
+    offsetXY="-20 234"
+    width="150"
+    height="46"
+    fontSize="22"
+    colors="#00695C|#00796B|#004D40|#555555"
+    textColor="#FFFFFF"
+    tooltip="竖摞：同点数的牌摞成一列；点“正序 / 倒序”恢复成一排（小键盘 4）"
+    tooltipPosition="Left">竖摞</Button>
+
 <!-- "选牌" and "出牌" share one spot: the script shows "出牌" to the players who are picking cards, "选牌" to the others. -->
 <Button
     id="guandanPickButton"

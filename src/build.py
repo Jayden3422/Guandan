@@ -1,8 +1,8 @@
 """Build the modified Guandan mod from the original Workshop mod.
 
-Reads original/3138177412.json (the unmodified Workshop file), injects the scripts in this folder
-and adds a play area (a second hand zone) in front of every player's hand, the Deck Selector tool
-and the Sort Hand Tool Stack.
+Reads original/3138177412.json (the unmodified Workshop file), injects the scripts in this folder,
+adds a play area (a second hand zone) in front of every player's hand and the Deck Selector tool,
+removes the Sort Hand Tools (sorting is done with on-screen buttons) and tidies the table.
 Only the lines that change are rewritten, so the result diffs cleanly against the original.
 
 Usage:  python build.py [extra output file ...]
@@ -38,36 +38,37 @@ PLAY_AREA_GUIDS = {"White": "9a7e01", "Green": "9a7e02", "Purple": "9a7e03", "Or
 # they are moved this far towards the table center.
 PASS_TILE_SHIFT = 1.1
 
+# The Sort Hand Tools are taken off the table: the Global script sorts hands, with on-screen buttons.
+REMOVED_TOOLS = ["Sort Hand Tool LR", "Sort Hand Tool RL"]
+
+# The tools left on the table sit in a row in its middle, the one place an ordinary play does not reach:
+# played cards lie 6 or more from the center (4.3 for a second row), the row ends 3.4 from it.
+# From left to right as seen by White; tools by Nickname, the die (it has none) by Name.
+TOOL_ROW = ["Collect Cards", "Deck Selector", "Die_12"]
+TOOL_PITCH = 2.4
+
 # The Deck Selector tool: a copy of the Collect Cards tile, showing on each side the back of the deck it selects.
 DECK_SELECTOR_GUID = "9a7e05"
-DECK_SELECTOR_POSITION = (8.4, -5.5)
 DECK_SELECTOR_FACE_UP_DECK = "123"
 DECK_SELECTOR_FACE_DOWN_DECK = "125"
 
-# The Sort Hand Tool Stack: a copy of the Sort Hand Tool LR tile, square instead of round to tell them apart.
-SORT_STACK_TOOL_GUID = "9a7e06"
-SORT_STACK_TOOL_POSITION = (1.5, -3.1)
-SQUARE_TILE = 0
-
-# Added at the top of the other Sort Hand Tools' sortHand(): a stacked hand goes back in the hand zone first.
-SORT_TOOL_HEAD = "function sortHand(obj, player_color)"
-SORT_TOOL_HOOK = """
-\t-- A stacked hand goes back in the hand zone first, which needs a moment to take the cards.
-\tif Global.call("unstackHand", {color = player_color}) then
-\t\tWait.time(function() sortHand(obj, player_color) end, 0.6)
-\t\treturn
-\tend
-"""
+# The piles in global.lua, where the decks also start:  [deck ID] = {x, y, z},
+DECK_PILE = re.compile(r'^\t\[(\d+)\] = \{(-?[\d.]+), -?[\d.]+, (-?[\d.]+)\},$', re.MULTILINE)
 
 # A line holding one string property:  <indent>"<key>": "<value>"[,]
 STRING_PROPERTY = re.compile(r'^(\s*)"(\w+)": (".*")(,?)$')
-# A position line inside an object's Transform.
-POSITION_PROPERTY = re.compile(r'^        "(posX|posZ)": (\S+),$')
+# A position or turn line inside an object's Transform.
+POSITION_PROPERTY = re.compile(r'^        "(posX|posZ|rotY)": (\S+),$')
 
 
 def read(name):
     with io.open(os.path.join(HERE, name), encoding="utf-8") as f:
         return f.read()
+
+
+def tool_position(name):
+    """Where a tool sits in the tool row:  (x, z)"""
+    return round((TOOL_ROW.index(name) - (len(TOOL_ROW) - 1) / 2) * TOOL_PITCH, 4), 0.0
 
 
 def play_areas(save):
@@ -108,50 +109,50 @@ def deck_selector(save):
     selector["GUID"] = DECK_SELECTOR_GUID
     selector["Nickname"] = "Deck Selector"
     selector["Description"] = "正面朝上发白牌，翻面发黑牌。点击切换。"
-    selector["Transform"].update(posX=DECK_SELECTOR_POSITION[0], posZ=DECK_SELECTOR_POSITION[1],
-                                 rotX=0.0, rotY=180.0, rotZ=0.0)
+    x, z = tool_position(selector["Nickname"])
+    selector["Transform"].update(posX=x, posZ=z, rotX=0.0, rotY=180.0, rotZ=0.0)
     selector["CustomImage"]["ImageURL"] = backs[DECK_SELECTOR_FACE_UP_DECK]
     selector["CustomImage"]["ImageSecondaryURL"] = backs[DECK_SELECTOR_FACE_DOWN_DECK]
     selector["LuaScript"] = read("deck_selector.lua")
     return selector
 
 
-def sort_stack_tool(save):
-    """The Sort Hand Tool Stack, derived from the Sort Hand Tool LR tile."""
-    sort_tools = [o for o in save["ObjectStates"] if o.get("Nickname") == "Sort Hand Tool LR"]
-    if len(sort_tools) != 1:
-        sys.exit("Expected 1 Sort Hand Tool LR tile, found %d." % len(sort_tools))
-    tool = copy.deepcopy(sort_tools[0])
-    tool["GUID"] = SORT_STACK_TOOL_GUID
-    tool["Nickname"] = "Sort Hand Tool Stack"
-    tool["Description"] = "竖摞：同点数的牌摞成一列。用另外两个排序工具恢复成一排。"
-    tool["Transform"].update(posX=SORT_STACK_TOOL_POSITION[0], posZ=SORT_STACK_TOOL_POSITION[1])
-    tool["CustomImage"]["CustomTile"]["Type"] = SQUARE_TILE
-    tool["LuaScript"] = read("sort_stack_tool.lua")
-    return tool
-
-
-def hook_sort_tool(script):
-    """Make a Sort Hand Tool unstack the hand before sorting it."""
-    newline = "\r\n" if "\r\n" in script else "\n"
-    line_end = script.index("\n", script.index(SORT_TOOL_HEAD)) + 1
-    return script[:line_end] + SORT_TOOL_HOOK.replace("\n", newline) + script[line_end:]
+def transform_lines(lines, guid):
+    """The position and turn lines of the object with this GUID:  {name: (line number, value)}"""
+    start = lines.index('      "GUID": "%s",' % guid)
+    found = {}
+    for i in range(start, start + 8):
+        match = POSITION_PROPERTY.match(lines[i])
+        if match:
+            found[match.group(1)] = (i, float(match.group(2)))
+    if len(found) != 3:
+        sys.exit("Could not find the position of %s." % guid)
+    return found
 
 
 def move_towards_center(lines, guid, distance):
     """Shift the object with this GUID towards the table center, along the axis it sits on."""
-    start = lines.index('      "GUID": "%s",' % guid)
-    position = {}
-    for i in range(start, start + 8):
-        match = POSITION_PROPERTY.match(lines[i])
-        if match:
-            position[match.group(1)] = (i, float(match.group(2)))
-    if len(position) != 2:
-        sys.exit("Could not find the position of %s." % guid)
-    axis = max(position, key=lambda key: abs(position[key][1]))
+    position = transform_lines(lines, guid)
+    axis = max(("posX", "posZ"), key=lambda key: abs(position[key][1]))
     i, value = position[axis]
     value -= math.copysign(distance, value)
     lines[i] = '        "%s": %s,' % (axis, round(value, 4))
+
+
+def place(lines, guid, **values):
+    """Put the object with this GUID somewhere else:  posX, posZ and rotY as given."""
+    found = transform_lines(lines, guid)
+    for name, value in values.items():
+        lines[found[name][0]] = '        "%s": %s,' % (name, value)
+
+
+def remove(lines, guid):
+    """Take the object with this GUID, which must not be the last one, out of the save."""
+    start = lines.index('      "GUID": "%s",' % guid) - 1
+    end = lines.index("    },", start)
+    if lines[start] != "    {":
+        sys.exit("Could not find the start of %s." % guid)
+    del lines[start:end + 1]
 
 
 def main():
@@ -162,11 +163,10 @@ def main():
 
     # Top-level properties are indented by one level.
     top_level = {"SaveName": SAVE_NAME, "LuaScript": read("global.lua"), "XmlUI": read("global.xml")}
-    # Object scripts, recognized by a snippet of the script they replace:  (snippet, new script or edit, count)
+    # Object scripts, recognized by a snippet of the script they replace:  (snippet, new script, count)
     object_scripts = {
         "pass_tile": ('label = "Pass"', read("pass_tile.lua"), 4),
         "collect_tool": ("function collectCards()", read("collect_tool.lua"), 1),
-        "sort_tool": (SORT_TOOL_HEAD, hook_sort_tool, 2),
     }
     replaced = dict.fromkeys(list(top_level) + list(object_scripts), 0)
 
@@ -184,7 +184,7 @@ def main():
             old_script = json.loads(value)
             for name, (snippet, script, _) in object_scripts.items():
                 if snippet in old_script:
-                    new_value = script(old_script) if callable(script) else script
+                    new_value = script
                     replaced[name] += 1
         if new_value is None:
             continue
@@ -197,15 +197,38 @@ def main():
         sys.exit("Unexpected replacements: %s (expected %s)" % (replaced, expected))
 
     pass_tile_snippet = object_scripts["pass_tile"][0]
+    piles = {deck_id: (float(x), float(z)) for deck_id, x, z in DECK_PILE.findall(top_level["LuaScript"])}
+    done = dict.fromkeys(["removed", "placed", "decks"], 0)
+
     for obj in save["ObjectStates"]:
+        name = obj.get("Nickname") or obj["Name"]
         if obj["Name"] == "Mahjong_Tile" and pass_tile_snippet in obj.get("LuaScript", ""):
             move_towards_center(lines, obj["GUID"], PASS_TILE_SHIFT)
+        elif name in REMOVED_TOOLS:
+            remove(lines, obj["GUID"])
+            done["removed"] += 1
+        elif name in TOOL_ROW:
+            x, z = tool_position(name)
+            place(lines, obj["GUID"], posX=x, posZ=z)
+            if obj["Name"] == "Custom_Tile":
+                # Readable from White's side, like the rest of the table.
+                place(lines, obj["GUID"], rotY=180.0)
+            done["placed"] += 1
+        elif obj["Name"] == "Deck":
+            # The decks start face down on the piles they are collected to.
+            (deck_id,) = obj["CustomDeck"]
+            place(lines, obj["GUID"], posX=piles[deck_id][0], posZ=piles[deck_id][1], rotY=0.0)
+            done["decks"] += 1
+
+    # The Deck Selector, added below, completes the tool row.
+    if done != {"removed": len(REMOVED_TOOLS), "placed": len(TOOL_ROW) - 1, "decks": 2}:
+        sys.exit("Unexpected changes to the table: %s" % done)
 
     # ObjectStates is the last top-level property: append the new objects after its last object.
     if lines[-3:] != ["    }", "  ]", "}"]:
         sys.exit("Unexpected end of file: %r" % lines[-3:])
     used_guids = set(re.findall(r'"GUID": "(\w+)"', source_text))
-    for obj in play_areas(save) + [deck_selector(save), sort_stack_tool(save)]:
+    for obj in play_areas(save) + [deck_selector(save)]:
         if obj["GUID"] in used_guids:
             sys.exit("GUID %s is already in use." % obj["GUID"])
         obj_lines = json.dumps(obj, ensure_ascii=False, indent=2).split("\n")

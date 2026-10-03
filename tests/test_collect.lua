@@ -92,9 +92,9 @@ local tableDeck = newDeck(ids(123, 104), {3, 1, 3})
 local inHand = newCard("h1", "Two", "Heart", {0.03, 4, -18}, 12301)       -- in White's hand
 local inArea = newCard("h2", "Two", "Heart", {0.03, 4, -13}, 12302)       -- in White's play area
 local onTable = newCard("h3", "Two", "Heart", {6, 1, -7.5}, 12303)
-globalFunctions.stackHand({color = "Green"})
+stackHand("Green")
 local stacked = newCard("h4", "Two", "Heart", {0.03, 2.97, 18}, 12304)    -- in Green's hand, then stacked
-globalFunctions.stackHand({color = "Green"})
+stackHand("Green")
 check(stacked.locked and #stacked.buttons == 1, "(Green's hand is stacked)")
 messages = {}
 Time.time = 100
@@ -116,7 +116,7 @@ local dealt = newCard("h5", "Two", "Heart", {0.03, 2.97, 18}, 12305)
 onObjectEnterZone({type = "Hand"}, dealt)
 settle()
 check(dealt.locked, "Green's hand stays switched to stacked for the next deal")
-globalFunctions.unstackHand({color = "Green"})
+sortHand("Green")
 settle()
 
 -- 5. Not complete in time: a message, no flip, and the tool can be used again.
