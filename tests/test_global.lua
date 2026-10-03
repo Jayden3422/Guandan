@@ -300,6 +300,8 @@ check(near(aceS.getRotation().y, 180) and near(aceS.getRotation().z, 0), "stacke
 local before = {x(aceS), z(aceS)}
 onStackCardClick(aceD, "Green")
 check(aceD.locked, "another player's click does nothing")
+onStackCardClick(aceD, "White", true)
+check(aceD.locked, "nor does the owner's right click")
 onStackCardClick(aceD, "White")
 settle()
 check(not aceD.locked and #aceD.buttons == 0 and zoneOf(aceD) == 2 and #aceD.hiddenFrom == 0, "the owner's click sends the card to the play area as a normal card")
@@ -362,6 +364,73 @@ check(unstackHand({color = "White"}) == false, "unstacking a hand that is not st
 onObjectEnterZone({type = "Hand"}, twoH)
 settle()
 check(not twoH.locked, "and cards arriving in it are left alone")
+
+-- 23. Groups: the cards in the play area become a column of their own, to the left of the hand.
+settle()
+objects = {}
+messages = {}
+local three, four, five = hand("White", "Three", "Heart"), hand("White", "Four", "Heart"), hand("White", "Five", "Heart")
+local nineC, nineS, kingH = hand("White", "Nine", "Club"), hand("White", "Nine", "Spade"), hand("White", "King", "Heart")
+onGroupButtonClick({color = "Grey"})
+onGroupButtonClick(whitePlayer)
+check(#messages == 1 and not three.locked, "grouping needs at least two cards in the play area")
+stage("White", {five, three, four})
+onPickButtonClick(whitePlayer)
+onScriptingButtonDown(5, "White")
+check(three.locked and #three.buttons == 1 and three.buttons[1].click_function == "onGroupCardClick" and hiddenFrom(three, "Green") and not hiddenFrom(three, "White"), "grouped cards are locked, clickable and hidden from the others")
+check(near(x(three), 0.03 - 11.7) and near(x(four), x(three)) and near(x(five), x(three)), "a group is a column left of the hand zone, with a gap")
+check(near(z(three), -18) and near(z(four), -18.62) and near(z(five), -19.24) and y(five) > y(three), "in order, each card a step closer to the player")
+check(not string.find(uiAttributes.guandanPlayButton.visibility, "White"), "grouping ends picking")
+check(not nineC.locked and zoneOf(nineC) == 1, "the rest of the hand is left alone")
+
+-- 24. Several groups line up to the left; sorting and stacking leave them alone.
+stage("White", {nineS, nineC})
+onGroupButtonClick(whitePlayer)
+check(near(x(nineC), 0.03 - 11.7 - 2.5) and near(x(nineS), x(nineC)) and near(x(three), 0.03 - 11.7), "a second group goes further left")
+stackHand({color = "White"})
+check(kingH.locked and near(x(kingH), 0.03) and near(x(three), 0.03 - 11.7) and near(z(five), -19.24) and three.buttons[1].click_function == "onGroupCardClick", "stacking the hand does not touch the groups")
+unstackHand({color = "White"})
+settle()
+check(not kingH.locked and three.locked and near(x(three), 0.03 - 11.7), "nor does putting it back in a row")
+
+-- 25. A left click on any card of a group sends the whole group to the play area, and the group is gone.
+onGroupCardClick(four, "White", true)
+onGroupCardClick(four, "Green", false)
+check(four.locked and three.locked, "a right click or another player's click does nothing")
+onGroupCardClick(four, "White", false)
+check(string.find(uiAttributes.guandanPlayButton.visibility, "White") ~= nil, "the owner's left click starts picking")
+check(near(x(nineC), 0.03 - 11.7), "the remaining group moves up next to the hand")
+settle()
+local allInArea = true
+for _, card in ipairs({three, four, five}) do
+	if card.locked or #card.buttons ~= 0 or zoneOf(card) ~= 2 or #card.hiddenFrom ~= 0 then allInArea = false end
+end
+check(allInArea, "and its cards are ordinary cards in the play area")
+onGroupCardClick(three, "White", false)
+check(zoneOf(three) == 2, "which no longer act as a group")
+
+-- 26. Taking them back makes them ordinary hand cards; grouping again makes a new group.
+onReturnButtonClick(whitePlayer)
+settle()
+check(zoneOf(three) == 1 and zoneOf(five) == 1 and not three.locked, "taken back, they are ordinary hand cards")
+stage("White", {three, four})
+onGroupCardClick(nineS, "White", false)
+settle()
+onGroupButtonClick(whitePlayer)
+check(near(x(three), 0.03 - 11.7) and near(x(nineS), x(three)) and near(z(three), -18) and near(z(four), -18.62) and near(z(nineC), -19.24) and near(z(nineS), -19.86), "a group and more cards put in the play area become one new group")
+check(zoneOf(five) == 1 and not five.locked, "cards left in hand stay there")
+
+-- 27. Save and load, and collecting.
+saved = onSave()
+three.buttons = {}
+three.hiddenFrom = {}
+onLoad(saved)
+check(#three.buttons == 1 and three.buttons[1].click_function == "onGroupCardClick" and hiddenFrom(three, "Green"), "groups survive save / load")
+onCollectCards()
+check(#three.buttons == 0 and #three.hiddenFrom == 0, "collecting lets go of the groups")
+onGroupCardClick(three, "White", false)
+settle()
+check(three.locked, "and forgets them")
 
 print(failures == 0 and "GLOBAL: ALL PASSED" or ("GLOBAL: " .. failures .. " FAILED"))
 if failures > 0 then error("test failures") end

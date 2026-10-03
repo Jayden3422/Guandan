@@ -7,7 +7,8 @@ Only the lines that change are rewritten, so the result diffs cleanly against th
 
 Usage:  python build.py [extra output file ...]
 
-The result is written to ../workshop/3138177412.json, and to every extra output file given.
+The result is written to ../workshop/3138177412.json, and to every extra output file given,
+each with a copy of the mod's icon (../workshop/3138177412.png) next to it.
 To try it in the game, give a file in the Saves folder (Documents/My Games/Tabletop Simulator/Saves),
 for example TS_Save_1.json: it then shows up under Games > Save & Load.
 """
@@ -17,6 +18,7 @@ import json
 import math
 import os
 import re
+import shutil
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -213,9 +215,15 @@ def main():
     text = "\r\n".join(lines)
     json.loads(text)
 
+    # The game shows the image with the same name next to a save as its icon.
+    icon = os.path.splitext(os.path.normpath(OUTPUT))[0] + ".png"
+
     for output in [os.path.normpath(OUTPUT)] + sys.argv[1:]:
         with io.open(output, "w", encoding="utf-8", newline="") as f:
             f.write(text)
+        output_icon = os.path.splitext(output)[0] + ".png"
+        if os.path.normcase(os.path.abspath(output_icon)) != os.path.normcase(icon):
+            shutil.copyfile(icon, output_icon)
         print("Wrote %s" % output)
 
 

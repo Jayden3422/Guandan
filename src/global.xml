@@ -39,3 +39,15 @@
     textColor="#FFFFFF"
     tooltip="把出牌区里的牌全部收回手牌，并结束选牌（小键盘 3）"
     tooltipPosition="Left">收回</Button>
+<Button
+    id="guandanGroupButton"
+    onClick="onGroupButtonClick"
+    rectAlignment="LowerRight"
+    offsetXY="-20 62"
+    width="150"
+    height="46"
+    fontSize="22"
+    colors="#6A1B9A|#7B1FA2|#4A148C|#555555"
+    textColor="#FFFFFF"
+    tooltip="把出牌区里的牌理成一组，单独摞在手牌左边；点组里任意一张，整组回到出牌区（小键盘 5）"
+    tooltipPosition="Left">理牌</Button>

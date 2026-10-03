@@ -8,9 +8,16 @@
 -- playHotKey:  starts picking cards, then plays the cards in the play area (same as the "选牌" / "出牌" button).
 -- returnHotKey:  takes the cards in the play area back in hand (same as the "收回" button).
 -- stackHotKey:  stacks the hand in columns, one per card number (same as the Sort Hand Tool Stack).
+-- groupHotKey:  turns the cards in the play area into a group (same as the "理牌" button).
 playHotKey = 2
 returnHotKey = 3
 stackHotKey = 4
+groupHotKey = 5
+
+-- Groups:  columns of cards the player put together, to the left of the hand zone.
+-- The gap between the hand zone and the first group, and between one group and the next.
+groupGap = 0.6
+groupSpacing = 0.3
 
 -- The stacked hand:  one column per card number, laid out where the hand is.
 -- How far each card of a column is shifted towards the player, leaving the top of the card above it visible.
@@ -98,6 +105,10 @@ local destinations = {}
 -- Stacked cards are locked in place by the script instead of being held by the hand zone.
 local stacks = {}
 
+-- The groups each player put together, by player color:  a list of {guids = {guid, ...}}, nearest the hand first.
+-- Their cards are locked in place like stacked cards.
+local groups = {}
+
 
 function onLoad(saved_data)
 
@@ -109,20 +120,36 @@ function onLoad(saved_data)
 		if data ~= nil and data.stacks ~= nil then
 			stacks = data.stacks
 		end
+		if data ~= nil and data.groups ~= nil then
+			groups = data.groups
+		end
 	end
 
 	drawPlayAreaOutlines()
 
-	-- Buttons and hiding are not part of a save: put them back on the stacked cards.
+	-- Buttons and hiding are not part of a save: put them back on the stacked and grouped cards.
+	local function restore(player_color, guid, click_function)
+		local card = getObjectFromGUID(guid)
+		if card ~= nil then
+			card.clearButtons()
+			stackCard(player_color, card, click_function)
+		end
+	end
+
 	for player_color, stack in pairs(stacks) do
 		for guid in pairs(stack.guids) do
-			local card = getObjectFromGUID(guid)
-			if card ~= nil then
-				card.clearButtons()
-				stackCard(player_color, card)
-			end
+			restore(player_color, guid)
 		end
 		layoutStack(player_color)
+	end
+
+	for player_color, playerGroups in pairs(groups) do
+		for _, group in ipairs(playerGroups) do
+			for _, guid in ipairs(group.guids) do
+				restore(player_color, guid, "onGroupCardClick")
+			end
+		end
+		layoutGroups(player_color)
 	end
 
 end
@@ -130,7 +157,7 @@ end
 
 function onSave()
 
-	return JSON.encode({lastPlay = lastPlay, stacks = stacks})
+	return JSON.encode({lastPlay = lastPlay, stacks = stacks, groups = groups})
 
 end
 
@@ -186,6 +213,8 @@ function onScriptingButtonDown(index, player_color)
 		returnPlayAreaToHand(player_color)
 	elseif index == stackHotKey then
 		stackHand({color = player_color})
+	elseif index == groupHotKey then
+		groupPlayArea(player_color)
 	end
 
 end
@@ -212,6 +241,14 @@ function onReturnButtonClick(player)
 
 	stopPicking(player.color)
 	returnPlayAreaToHand(player.color)
+
+end
+
+
+-- The on-screen "理牌" button.
+function onGroupButtonClick(player)
+
+	groupPlayArea(player.color)
 
 end
 
@@ -488,7 +525,8 @@ end
 
 
 -- Take a card over from the hand zone:  locked, it stays where the script puts it and the hand zone lets go of it.
-function stackCard(player_color, card)
+-- click_function is called when the card is clicked; it defaults to the one for stacked cards.
+function stackCard(player_color, card, click_function)
 
 	-- The hand zone no longer hides it, so hide it from everyone else the same way.
 	local others = {}
@@ -503,7 +541,7 @@ function stackCard(player_color, card)
 
 	-- A locked card cannot be picked up, so it gets an invisible button to click instead.
 	card.createButton({
-		click_function = "onStackCardClick",
+		click_function = click_function or "onStackCardClick",
 		function_owner = Global,
 		label = "",
 		position = {0, 0.3, 0},
@@ -523,11 +561,11 @@ function unstackCard(card)
 	card.clearButtons()
 	card.setLock(false)
 
-	-- Stop hiding it once the hand zone has had time to take over, unless it was stacked again by then.
+	-- Stop hiding it once the hand zone has had time to take over, unless the script took it again by then.
 	local guid = card.guid
 	Wait.time(function()
 		local card = getObjectFromGUID(guid)
-		if card ~= nil and getStackOwner(guid) == nil then
+		if card ~= nil and getStackOwner(guid) == nil and getGroupOf(guid) == nil then
 			card.setHiddenFrom({})
 		end
 	end, 0.5)
@@ -624,11 +662,12 @@ end
 
 
 -- Clicking a stacked card sends it to the play area, like clicking a hand card while picking cards.
-function onStackCardClick(card, player_color)
+-- Only a left click counts: a right click is what a player does to turn the camera.
+function onStackCardClick(card, player_color, alt_click)
 
 	local owner = getStackOwner(card.guid)
 
-	if owner == nil or owner ~= player_color then
+	if alt_click or owner == nil or owner ~= player_color then
 		return
 	end
 
@@ -641,6 +680,148 @@ function onStackCardClick(card, player_color)
 	sendToHandZone(owner, card.guid, playAreaHandIndex, 3)
 	unstackCard(card)
 	sortPlayAreasSoon()
+
+end
+
+
+--  ======================================================================
+--						Groups
+--  ======================================================================
+
+
+-- Turn the cards in the player's play area into a group:  a column of its own to the left of the hand,
+-- which sorting and stacking leave alone.  Clicking any of its cards sends the whole group back to the play area.
+function groupPlayArea(player_color)
+
+	local cards = getPlayAreaCards(player_color)
+
+	-- Spectators have no hand zones.
+	if cards == nil then
+		return
+	end
+
+	if #cards < 2 then
+		broadcastToColor("理牌：先把至少两张牌放进出牌区", player_color, {1,1,1})
+		return
+	end
+
+	local guids = {}
+	for _, card in ipairs(cards) do
+		stackCard(player_color, card, "onGroupCardClick")
+		table.insert(guids, card.guid)
+	end
+
+	groups[player_color] = groups[player_color] or {}
+	table.insert(groups[player_color], {guids = guids})
+
+	stopPicking(player_color)
+	layoutGroups(player_color)
+
+end
+
+
+-- The group holding this card:  the player's color and the group's place in their list of groups.
+function getGroupOf(guid)
+
+	for player_color, playerGroups in pairs(groups) do
+		for index, group in ipairs(playerGroups) do
+			for _, groupGuid in ipairs(group.guids) do
+				if groupGuid == guid then
+					return player_color, index
+				end
+			end
+		end
+	end
+
+	return nil
+
+end
+
+
+-- Arrange a player's groups:  one column each, starting next to the left edge of the hand zone and going left.
+-- Like a column of a stacked hand, each card lies a step closer to the player than the one before.
+function layoutGroups(player_color)
+
+	local playerGroups = groups[player_color]
+
+	if playerGroups == nil then
+		return
+	end
+
+	local seat = getSeat(player_color)
+	local column = 0
+
+	for index = #playerGroups, 1, -1 do
+		-- Cards that are gone or were unlocked by hand have left their group.
+		local cards = {}
+		for _, guid in ipairs(playerGroups[index].guids) do
+			local card = getObjectFromGUID(guid)
+			if card ~= nil and card.getLock() then
+				table.insert(cards, card)
+			end
+		end
+		if #cards == 0 then
+			table.remove(playerGroups, index)
+		else
+			table.sort(cards, sortLogic)
+			playerGroups[index].guids = {}
+			for i, card in ipairs(cards) do
+				playerGroups[index].guids[i] = card.guid
+			end
+		end
+	end
+
+	for _, group in ipairs(playerGroups) do
+
+		local across = seat.width / 2 + groupGap + cardWidth / 2 + column * (cardWidth + groupSpacing)
+
+		for r, guid in ipairs(group.guids) do
+
+			local card = getObjectFromGUID(guid)
+			local position = seat.position - seat.right * across - seat.forward * ((r - 1) * stackRowStep)
+			position.y = seat.position.y + stackRowLift * (r - 1)
+
+			card.setPosition(position)
+			card.setRotation(seat.rotation)
+
+		end
+
+		column = column + 1
+
+	end
+
+end
+
+
+-- Clicking a card of a group sends the whole group to the play area, where it is a group no longer:
+-- its cards can be played, taken back in hand, or grouped again.
+-- Only a left click counts: a right click is what a player does to turn the camera.
+function onGroupCardClick(card, player_color, alt_click)
+
+	local owner, index = getGroupOf(card.guid)
+
+	if alt_click or owner == nil or owner ~= player_color then
+		return
+	end
+
+	local group = table.remove(groups[owner], index)
+
+	if not picking[owner] then
+		startPicking(owner, true)
+	end
+
+	for _, guid in ipairs(group.guids) do
+		local groupCard = getObjectFromGUID(guid)
+		if groupCard ~= nil then
+			sendToHandZone(owner, guid, playAreaHandIndex, 3)
+			unstackCard(groupCard)
+		end
+	end
+
+	sortPlayAreasSoon()
+
+	-- The groups further left move up.
+	layoutGroups(owner)
 
 end
 
@@ -659,19 +840,32 @@ end
 
 
 -- Called by the Collect Cards tool before it takes every card:  let go of the stacked hands (which stay
--- switched on for the next deal), end card picking, and forget the plays on the table.
+-- switched on for the next deal) and of the groups, end card picking, and forget the plays on the table.
 function onCollectCards()
+
+	local function letGo(guid)
+		local card = getObjectFromGUID(guid)
+		if card ~= nil then
+			card.clearButtons()
+			card.setHiddenFrom({})
+		end
+	end
 
 	for player_color, stack in pairs(stacks) do
 		for guid in pairs(stack.guids) do
-			local card = getObjectFromGUID(guid)
-			if card ~= nil then
-				card.clearButtons()
-				card.setHiddenFrom({})
-			end
+			letGo(guid)
 		end
 		stack.guids = {}
 	end
+
+	for player_color, playerGroups in pairs(groups) do
+		for _, group in ipairs(playerGroups) do
+			for _, guid in ipairs(group.guids) do
+				letGo(guid)
+			end
+		end
+	end
+	groups = {}
 
 	picking = {}
 	updateButtons()
