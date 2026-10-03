@@ -16,6 +16,18 @@ A scripted [Tabletop Simulator](https://store.steampowered.com/app/286160/Tablet
 
 The mod does not enforce the rules of Guandan. It handles the cards; the players judge the plays.
 
+## Screenshots
+
+Taken with the game set to Chinese, so the buttons read 正序 (Sort ↑), 竖摞 (Stack), 选牌 / 出牌 (Pick / Play), 收回 (Take back) and 理牌 (Group).
+
+| The table as it loads | Picking cards from a stacked hand into the play area |
+|---|---|
+| ![The table as it loads](screenshots/table.jpg) | ![Picking cards from a stacked hand into the play area](screenshots/picking.jpg) |
+
+| A group, to the left of the stacked hand | Playing with the black deck |
+|---|---|
+| ![A group, to the left of the stacked hand](screenshots/group.jpg) | ![Playing with the black deck](screenshots/black-deck.jpg) |
+
 ## Based on
 
 This mod is built on the Workshop mod **[Guandan](https://steamcommunity.com/sharedfiles/filedetails/?id=3138177412)**. The table, the cards, the seats and the original tools come from it, and everything here is a continuation of that work.
