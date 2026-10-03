@@ -11,9 +11,9 @@
 
 
 -- The deck dealt for each side of the tool.
--- id:  the deck's ID (its card IDs without their last two digits).  name:  what the players are told.
-faceUpDeck = {id = 123, name = "白牌"}
-faceDownDeck = {id = 125, name = "黑牌"}
+-- id:  the deck's ID (its card IDs without their last two digits).  name:  what the players are told, in English and Chinese.
+faceUpDeck = {id = 123, name = {en = "The white deck", zh = "白牌"}}
+faceDownDeck = {id = 125, name = {en = "The black deck", zh = "黑牌"}}
 
 
 
@@ -32,7 +32,7 @@ function onLoad()
 end
 
 
--- The deck of the side that is up:  {id = , name = }.  Called by the Collect Cards tool when dealing.
+-- The deck of the side that is up:  {id = , name = {en = , zh = }}.  Called by the Collect Cards tool when dealing.
 function getSelectedDeck()
 
 	if self.is_face_down then
@@ -54,6 +54,7 @@ function switchDeck()
 
 	self.flip()
 
-	broadcastToAll("发牌改用" .. deck.name, {1,1,1})
+	-- Each player sees the part for the language of their own game.
+	broadcastToAll("{en}" .. deck.name.en .. " will be dealt{zh}发牌改用" .. deck.name.zh, {1,1,1})
 
 end

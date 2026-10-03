@@ -16,15 +16,21 @@ The mod does not enforce the rules of Guandan. It handles the cards; the players
 
 This mod is built on the Workshop mod **[Guandan](https://steamcommunity.com/sharedfiles/filedetails/?id=3138177412)**. The table, the cards, the seats and the original tools come from it, and everything here is a continuation of that work.
 
-**To the author of the original mod:** I am sorry that I had not managed to reach you by the time I published this on the Workshop. Thank you for sharing your work. If you have any concerns, please contact me at any time through the [issues of this repository](https://github.com/Jayden3422/Guandan/issues), and I will rework the parts that come from your mod as soon as possible.
+**To the author of the original mod:** I am sorry that I had not managed to reach you by the time I published this on the Workshop. Thank you for sharing your work. If you have any concerns, please add me on Steam and tell me at any time, and I will rework the parts that come from your mod as soon as possible.
 
 ## Installing
 
 1. Download [`workshop/3138177412.json`](workshop/3138177412.json) and [`workshop/3138177412.png`](workshop/3138177412.png).
 2. Put both files in the Saves folder of Tabletop Simulator: `Documents/My Games/Tabletop Simulator/Saves`.
-3. In the game, start a table, open **Games → Save & Load**, and load **Guandan 掼蛋（出牌区）**.
+3. In the game, start a table, open **Games → Save & Load**, and load **Guandan 掼蛋**.
 
 Only the host needs the files. Tested with Tabletop Simulator v14.2.2.
+
+## Languages
+
+The buttons and messages follow the language of each player's own game: Chinese when the game is set to Chinese, English otherwise. Players at the same table can each see their own language.
+
+My friends and I all play in Simplified Chinese. I have added the English texts, but I have not been able to try them as much, so I am sorry if you run into small problems there.
 
 ## Playing a round
 
@@ -39,40 +45,40 @@ Each seat also has a **Pass** tile. The die and the two counters are there for k
 
 ## The buttons
 
-Five buttons sit in the lower right corner of the screen. Their labels are in Chinese. Each has a scripting hotkey, which is a numpad key unless you changed it in **Options → Game Keys**.
+Five buttons sit in the lower right corner of the screen. Each has a scripting hotkey, which is a numpad key unless you changed it in **Options → Game Keys**.
 
-| Button | Meaning | Hotkey | What it does |
+| Button | In Chinese | Hotkey | What it does |
 |---|---|---|---|
-| 正序 / 倒序 | Sort ascending / descending | Numpad 1 | Sorts your hand in a row. The button shows the order the next click gives, and alternates. |
-| 竖摞 | Stack | Numpad 4 | Stacks your hand in columns, one per card number. |
-| 选牌 / 出牌 | Pick / Play | Numpad 2 | Starts picking cards, then plays the cards in your play area. |
-| 收回 | Take back | Numpad 3 | Takes the cards in your play area back into your hand. |
-| 理牌 | Group | Numpad 5 | Turns the cards in your play area into a group. |
+| Sort ↑ / Sort ↓ | 正序 / 倒序 | Numpad 1 | Sorts your hand in a row. The button shows the order the next click gives, and alternates. |
+| Stack | 竖摞 | Numpad 4 | Stacks your hand in columns, one per card number. |
+| Pick / Play | 选牌 / 出牌 | Numpad 2 | Starts picking cards, then plays the cards in your play area. |
+| Take back | 收回 | Numpad 3 | Takes the cards in your play area back into your hand. |
+| Group | 理牌 | Numpad 5 | Turns the cards in your play area into a group. |
 
 ### Playing cards
 
 - **The play area** is the outlined rectangle on the table in front of your hand. Like your hand, only you can see the cards in it. They are kept sorted.
-- **Picking.** Click **选牌**. Now a click on a card in your hand moves it to the play area, and a click on a card in the play area moves it back. You can also drag cards into the play area without picking.
-- **Playing.** While you are picking, the button reads **出牌**. Click it to play every card in the play area: the cards are laid out face up in front of you, sorted from low to high. More than 10 cards are split over several rows.
-- **Taking back.** **收回** returns the play area to your hand and ends picking.
-- While you are picking, your own hand cards cannot be dragged, because a click moves them. Click **收回** first.
+- **Picking.** Click **Pick**. Now a click on a card in your hand moves it to the play area, and a click on a card in the play area moves it back. You can also drag cards into the play area without picking.
+- **Playing.** While you are picking, the button reads **Play**. Click it to play every card in the play area: the cards are laid out face up in front of you, sorted from low to high. More than 10 cards are split over several rows.
+- **Taking back.** **Take back** returns the play area to your hand and ends picking.
+- While you are picking, your own hand cards cannot be dragged, because a click moves them. Click **Take back** first.
 - When you play again, or click your **Pass** tile, your previous play is moved to its deck's pile.
 
 ### A stacked hand
 
-**竖摞** arranges your hand like the mobile Guandan apps do: cards of the same number in one column, the columns from 2 up to the Jokers, each card showing its top edge.
+**Stack** arranges your hand like the mobile Guandan apps do: cards of the same number in one column, the columns from 2 up to the Jokers, each card showing its top edge.
 
 - The hand stays stacked. Cards that reach your hand later, dealt or taken back, join the stack.
 - Stacked cards are held in place by the script, so they cannot be dragged. **Left-click** a card to send it to the play area.
-- Click **正序 / 倒序** to go back to a row.
+- Click **Sort ↑ / Sort ↓** to go back to a row.
 
 ### Groups
 
 A group keeps cards together that you plan to play together, such as a straight.
 
-- Put two or more cards in the play area and click **理牌**. They become a column of their own to the left of your hand.
+- Put two or more cards in the play area and click **Group**. They become a column of their own to the left of your hand.
 - **Left-click** any card of a group to send the whole group to the play area. There it is a group no longer: play the cards, take them back, or group them again.
-- Sorting and stacking leave groups alone. To change a group, send it to the play area, add or remove cards, and click **理牌** again.
+- Sorting and stacking leave groups alone. To change a group, send it to the play area, add or remove cards, and click **Group** again.
 - You can have several groups.
 
 ## For developers

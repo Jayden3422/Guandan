@@ -12,7 +12,7 @@ check(self.flips == 1 and getSelectedDeck().id == 125 and #messages == 1, "click
 switchDeck()
 check(getSelectedDeck().id == 123 and #messages == 2, "clicking again goes back to the white deck")
 self.is_face_down = true
-check(getSelectedDeck().name == "黑牌", "flipping the tool by hand selects the black deck too")
+check(getSelectedDeck().name.zh == "黑牌" and getSelectedDeck().name.en == "The black deck", "flipping the tool by hand selects the black deck too")
 
 print(failures == 0 and "SELECTOR: ALL PASSED" or ("SELECTOR: " .. failures .. " FAILED"))
 if failures > 0 then error("test failures") end

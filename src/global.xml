@@ -2,6 +2,9 @@
 <!-- One column of buttons in the lower right corner, from top to bottom: -->
 <!-- 正序 / 倒序, 竖摞, 选牌 / 出牌, 收回, 理牌 -->
 
+<!-- Button texts carry the game's language codes: each player sees the part for the language of their own game. -->
+<!-- Tooltips do not go through that, so they give both languages. -->
+
 <!-- "正序" and "倒序" share one spot: the script shows each player the one that says which way their hand is sorted next. -->
 <Button
     id="guandanSortButton"
@@ -13,8 +16,8 @@
     fontSize="22"
     colors="#00695C|#00796B|#004D40|#555555"
     textColor="#FFFFFF"
-    tooltip="把手牌从小到大排成一排；之后这个按钮变成“倒序”（小键盘 1）"
-    tooltipPosition="Left">正序</Button>
+    tooltip="把手牌从小到大排成一排，之后按钮变成“倒序”（小键盘 1） / Sorts your hand from low to high; the button then offers the other order (Numpad 1)"
+    tooltipPosition="Left">{en}Sort ↑{zh}正序</Button>
 <Button
     id="guandanSortDescendingButton"
     active="false"
@@ -26,8 +29,8 @@
     fontSize="22"
     colors="#00695C|#00796B|#004D40|#555555"
     textColor="#FFFFFF"
-    tooltip="把手牌从大到小排成一排；之后这个按钮变回“正序”（小键盘 1）"
-    tooltipPosition="Left">倒序</Button>
+    tooltip="把手牌从大到小排成一排，之后按钮变回“正序”（小键盘 1） / Sorts your hand from high to low; the button then offers the other order (Numpad 1)"
+    tooltipPosition="Left">{en}Sort ↓{zh}倒序</Button>
 <Button
     id="guandanStackButton"
     onClick="onStackButtonClick"
@@ -38,8 +41,8 @@
     fontSize="22"
     colors="#00695C|#00796B|#004D40|#555555"
     textColor="#FFFFFF"
-    tooltip="竖摞：同点数的牌摞成一列；点“正序 / 倒序”恢复成一排（小键盘 4）"
-    tooltipPosition="Left">竖摞</Button>
+    tooltip="同点数的牌摞成一列；点“正序 / 倒序”恢复成一排（小键盘 4） / Stacks your hand in columns, one per card number; sort to go back to a row (Numpad 4)"
+    tooltipPosition="Left">{en}Stack{zh}竖摞</Button>
 
 <!-- "选牌" and "出牌" share one spot: the script shows "出牌" to the players who are picking cards, "选牌" to the others. -->
 <Button
@@ -53,8 +56,8 @@
     fontStyle="Bold"
     colors="#1565C0|#1976D2|#0D47A1|#555555"
     textColor="#FFFFFF"
-    tooltip="开始选牌：点手牌放进出牌区，点出牌区里的牌放回手牌（小键盘 2）"
-    tooltipPosition="Left">选牌</Button>
+    tooltip="开始选牌：点手牌放进出牌区，点出牌区里的牌放回手牌（小键盘 2） / Start picking: click a card in your hand to put it in the play area, click a card there to take it back (Numpad 2)"
+    tooltipPosition="Left">{en}Pick{zh}选牌</Button>
 <Button
     id="guandanPlayButton"
     active="false"
@@ -67,8 +70,8 @@
     fontStyle="Bold"
     colors="#2E7D32|#388E3C|#1B5E20|#555555"
     textColor="#FFFFFF"
-    tooltip="打出出牌区里的所有牌（小键盘 2）"
-    tooltipPosition="Left">出牌</Button>
+    tooltip="打出出牌区里的所有牌（小键盘 2） / Plays every card in your play area (Numpad 2)"
+    tooltipPosition="Left">{en}Play{zh}出牌</Button>
 <Button
     id="guandanReturnButton"
     onClick="onReturnButtonClick"
@@ -79,8 +82,8 @@
     fontSize="22"
     colors="#455A64|#546E7A|#37474F|#555555"
     textColor="#FFFFFF"
-    tooltip="把出牌区里的牌全部收回手牌，并结束选牌（小键盘 3）"
-    tooltipPosition="Left">收回</Button>
+    tooltip="把出牌区里的牌全部收回手牌，并结束选牌（小键盘 3） / Takes the cards in your play area back into your hand, and ends picking (Numpad 3)"
+    tooltipPosition="Left">{en}Take back{zh}收回</Button>
 <Button
     id="guandanGroupButton"
     onClick="onGroupButtonClick"
@@ -91,5 +94,5 @@
     fontSize="22"
     colors="#6A1B9A|#7B1FA2|#4A148C|#555555"
     textColor="#FFFFFF"
-    tooltip="把出牌区里的牌理成一组，单独摞在手牌左边；点组里任意一张，整组回到出牌区（小键盘 5）"
-    tooltipPosition="Left">理牌</Button>
+    tooltip="把出牌区里的牌理成一组，单独摞在手牌左边；点组里任意一张，整组回到出牌区（小键盘 5） / Turns the cards in your play area into a group, a column of its own left of your hand; click any of its cards to send the whole group back to the play area (Numpad 5)"
+    tooltipPosition="Left">{en}Group{zh}理牌</Button>

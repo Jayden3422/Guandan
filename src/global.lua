@@ -287,7 +287,7 @@ function startPicking(player_color, quiet)
 	updateButtons()
 
 	if not quiet then
-		broadcastToColor("选牌中：点手牌放进出牌区，点出牌区里的牌放回手牌", player_color, {1,1,1})
+		broadcastToColor("{en}Picking: click a card in your hand to put it in the play area, click a card there to take it back{zh}选牌中：点手牌放进出牌区，点出牌区里的牌放回手牌", player_color, {1,1,1})
 	end
 
 end
@@ -485,7 +485,7 @@ function stackHand(player_color)
 
 	if stacks[player_color] == nil then
 		stacks[player_color] = {guids = {}}
-		broadcastToColor("竖摞：点牌放进出牌区；点“正序 / 倒序”恢复成一排", player_color, {1,1,1})
+		broadcastToColor("{en}Stacked: click a card to put it in the play area; sort to go back to a row{zh}竖摞：点牌放进出牌区；点“正序 / 倒序”恢复成一排", player_color, {1,1,1})
 	end
 
 	absorbHand(player_color)
@@ -766,7 +766,7 @@ function groupPlayArea(player_color)
 	end
 
 	if #cards < 2 then
-		broadcastToColor("理牌：先把至少两张牌放进出牌区", player_color, {1,1,1})
+		broadcastToColor("{en}Group: put at least two cards in the play area first{zh}理牌：先把至少两张牌放进出牌区", player_color, {1,1,1})
 		return
 	end
 
@@ -1074,7 +1074,7 @@ function playFromPlayArea(player_color)
 	end
 
 	if #cards == 0 then
-		broadcastToColor("出牌区里没有牌：先点手牌，把要出的牌放进出牌区", player_color, {1,1,1})
+		broadcastToColor("{en}The play area is empty: click the cards you want to play first{zh}出牌区里没有牌：先点手牌，把要出的牌放进出牌区", player_color, {1,1,1})
 		return
 	end
 

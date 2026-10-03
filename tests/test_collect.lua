@@ -26,7 +26,7 @@ local function waitsAbovePile(card, x)
 end
 
 -- The Deck Selector tool.
-local selected = {id = 123, name = "白牌"}
+local selected = {id = 123, name = {en = "The white deck", zh = "白牌"}}
 local selector = {call = function(name) return selected end}
 
 onLoad()
@@ -41,7 +41,7 @@ check(deckA.shuffled == 1 and self.flips == 1, "the dealt deck is shuffled and t
 deckA.dealt = {}
 dealCards()
 check(deckA.dealt.Green == 27 and next(deckB.dealt) == nil, "the white deck is dealt again the next time")
-selected = {id = 125, name = "黑牌"}
+selected = {id = 125, name = {en = "The black deck", zh = "黑牌"}}
 deckA.dealt = {}
 dealCards()
 check(deckB.dealt.Green == 27 and next(deckA.dealt) == nil, "black selected: only the black deck is dealt")

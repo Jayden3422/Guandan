@@ -25,7 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WORKSHOP_FILE = "3138177412.json"
 SOURCE = os.path.join(HERE, "original", WORKSHOP_FILE)
 OUTPUT = os.path.join(HERE, "..", "workshop", WORKSHOP_FILE)
-SAVE_NAME = "Guandan 掼蛋（出牌区）"
+SAVE_NAME = "Guandan 掼蛋"
 
 # Play areas: a second hand zone per player, this far in front of the hand (towards the table center).
 # They must come after the original hand zones in the save, so each player's hand stays hand zone 1.
@@ -107,9 +107,11 @@ def deck_selector(save):
         sys.exit("Expected 1 Collect Cards tile, found %d." % len(collect_tiles))
     selector = copy.deepcopy(collect_tiles[0])
     selector["GUID"] = DECK_SELECTOR_GUID
-    selector["Nickname"] = "Deck Selector"
-    selector["Description"] = "正面朝上发白牌，翻面发黑牌。点击切换。"
-    x, z = tool_position(selector["Nickname"])
+    # Texts with language codes: each player sees the part for the language of their own game.
+    selector["Nickname"] = "{en}Deck Selector{zh}选牌堆"
+    selector["Description"] = ("{en}Face up deals the white deck, flipped the black deck. Click to switch."
+                               "{zh}正面朝上发白牌，翻面发黑牌。点击切换。")
+    x, z = tool_position("Deck Selector")
     selector["Transform"].update(posX=x, posZ=z, rotX=0.0, rotY=180.0, rotZ=0.0)
     selector["CustomImage"]["ImageURL"] = backs[DECK_SELECTOR_FACE_UP_DECK]
     selector["CustomImage"]["ImageSecondaryURL"] = backs[DECK_SELECTOR_FACE_DOWN_DECK]

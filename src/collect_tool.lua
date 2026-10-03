@@ -3,6 +3,9 @@
 -- The pile of each deck is configured in the Global script (deckPilePositions).
 -- The deck that gets dealt is chosen with the Deck Selector tool.
 
+-- Messages hold the text in both languages, marked with the game's language codes:
+-- each player sees the part for the language of their own game.
+
 -- The Deck Selector tool.  Without it, any complete deck is dealt.
 deckSelectorGuid = "9a7e05"
 
@@ -205,7 +208,7 @@ function collectCards()
 
 	if held and (confirmUntil == nil or Time.time > confirmUntil) then
 		confirmUntil = Time.time + confirmTimeout
-		broadcastToAll("还有玩家手里有牌：" .. confirmTimeout .. " 秒内再点一次，连手里的牌一起收走", {1,1,1})
+		broadcastToAll("{en}Some players still hold cards: click again within " .. confirmTimeout .. " seconds to collect those too{zh}还有玩家手里有牌：" .. confirmTimeout .. " 秒内再点一次，连手里的牌一起收走", {1,1,1})
 		return
 	end
 
@@ -230,7 +233,7 @@ function collectCards()
 		collectTimeout,
 		function()
 			collecting = false
-			broadcastToAll("牌没有收齐成整副（可能有牌被拿着或缺牌），处理后再点一次", {1,1,1})
+			broadcastToAll("{en}The cards did not form complete decks (a card may be held or missing): sort that out and click again{zh}牌没有收齐成整副（可能有牌被拿着或缺牌），处理后再点一次", {1,1,1})
 		end
 	)
 
@@ -239,7 +242,7 @@ end
 
 function dealCards()
 
-	-- The deck chosen with the Deck Selector tool:  {id = , name = }
+	-- The deck chosen with the Deck Selector tool:  {id = , name = {en = , zh = }}
 	local selected = nil
 	local selector = getObjectFromGUID(deckSelectorGuid)
 	if selector ~= nil then
@@ -259,7 +262,7 @@ function dealCards()
 	end
 
 	if deck == nil then
-		broadcastToAll((selected and selected.name or "牌") .. "还没有收齐成一整副，先收牌", {1,1,1})
+		broadcastToAll("{en}" .. (selected and selected.name.en or "The deck") .. " is not complete yet: collect the cards first{zh}" .. (selected and selected.name.zh or "牌") .. "还没有收齐成一整副，先收牌", {1,1,1})
 		return
 	end
 

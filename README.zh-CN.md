@@ -16,15 +16,21 @@
 
 本 mod 是在创意工坊 mod **[Guandan](https://steamcommunity.com/sharedfiles/filedetails/?id=3138177412)** 的基础上继续制作的。牌桌、牌、座位和原有的工具都来自原作。
 
-**致原作者：** 很抱歉，截至我把它发布到创意工坊的时候，我仍然没能联系上你。非常感谢你的分享精神。如果你有任何顾虑，请随时通过[本仓库的 issue](https://github.com/Jayden3422/Guandan/issues) 联系我，我会尽快重构来自你作品的那部分内容。
+**致原作者：** 很抱歉，截至我把它发布到创意工坊的时候，我仍然没能联系上你。非常感谢你的分享精神。如果你有任何顾虑，请随时在 Steam 上加我好友告诉我，我会尽快重构来自你作品的那部分内容。
 
 ## 安装
 
 1. 下载 [`workshop/3138177412.json`](workshop/3138177412.json) 和 [`workshop/3138177412.png`](workshop/3138177412.png)。
 2. 把两个文件放进 Tabletop Simulator 的存档文件夹：`文档/My Games/Tabletop Simulator/Saves`。
-3. 进游戏开一张桌子，打开 **Games → Save & Load**，载入 **Guandan 掼蛋（出牌区）**。
+3. 进游戏开一张桌子，打开 **Games → Save & Load**，载入 **Guandan 掼蛋**。
 
 只有房主需要这两个文件。在 Tabletop Simulator v14.2.2 上测试过。
+
+## 语言
+
+按钮和提示消息跟随每个玩家自己游戏的语言：游戏设成中文就显示中文，其他语言显示英文。同一桌的玩家可以各看各的语言。
+
+我和朋友们都用简体中文玩。英文我做了适配，但没能充分试过，如果有小问题，很抱歉。
 
 ## 一局的流程
 
