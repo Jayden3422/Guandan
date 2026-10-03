@@ -1,0 +1,41 @@
+<!-- 掼蛋 Guandan - Global UI -->
+<!-- "选牌" and "出牌" share one spot: the script shows "出牌" to the players who are picking cards, "选牌" to the others. -->
+<Button
+    id="guandanPickButton"
+    onClick="onPickButtonClick"
+    rectAlignment="LowerRight"
+    offsetXY="-20 170"
+    width="150"
+    height="56"
+    fontSize="26"
+    fontStyle="Bold"
+    colors="#1565C0|#1976D2|#0D47A1|#555555"
+    textColor="#FFFFFF"
+    tooltip="开始选牌：点手牌放进出牌区，点出牌区里的牌放回手牌（小键盘 2）"
+    tooltipPosition="Left">选牌</Button>
+<Button
+    id="guandanPlayButton"
+    active="false"
+    onClick="onPlayButtonClick"
+    rectAlignment="LowerRight"
+    offsetXY="-20 170"
+    width="150"
+    height="56"
+    fontSize="26"
+    fontStyle="Bold"
+    colors="#2E7D32|#388E3C|#1B5E20|#555555"
+    textColor="#FFFFFF"
+    tooltip="打出出牌区里的所有牌（小键盘 2）"
+    tooltipPosition="Left">出牌</Button>
+<Button
+    id="guandanReturnButton"
+    onClick="onReturnButtonClick"
+    rectAlignment="LowerRight"
+    offsetXY="-20 116"
+    width="150"
+    height="46"
+    fontSize="22"
+    colors="#455A64|#546E7A|#37474F|#555555"
+    textColor="#FFFFFF"
+    tooltip="把出牌区里的牌全部收回手牌，并结束选牌（小键盘 3）"
+    tooltipPosition="Left">收回</Button>
