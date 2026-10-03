@@ -8,6 +8,10 @@
   <b>English</b> | <a href="README.zh-CN.md">简体中文</a>
 </p>
 
+<p align="center">
+  <a href="https://steamcommunity.com/sharedfiles/filedetails/?id=3812889038"><b>Subscribe on the Steam Workshop</b></a>
+</p>
+
 A scripted [Tabletop Simulator](https://store.steampowered.com/app/286160/Tabletop_Simulator/) table for Guandan, the four-player card game played with two decks. It adds one-click dealing and collecting, a private play area, click-to-pick card play, and a hand that can be stacked in columns like in the mobile Guandan apps.
 
 The mod does not enforce the rules of Guandan. It handles the cards; the players judge the plays.
@@ -16,9 +20,13 @@ The mod does not enforce the rules of Guandan. It handles the cards; the players
 
 This mod is built on the Workshop mod **[Guandan](https://steamcommunity.com/sharedfiles/filedetails/?id=3138177412)**. The table, the cards, the seats and the original tools come from it, and everything here is a continuation of that work.
 
-**To the author of the original mod:** I am sorry that I had not managed to reach you by the time I published this on the Workshop. Thank you for sharing your work. If you have any concerns, please add me on Steam and tell me at any time, and I will rework the parts that come from your mod as soon as possible.
+**To the author of the original mod:** I am sorry that I had not managed to reach you by the time I published this on the Workshop. Thank you for sharing your work. If you have any concerns, please add me on Steam and tell me at any time (I am the author of [this mod's Workshop page](https://steamcommunity.com/sharedfiles/filedetails/?id=3812889038)), and I will rework the parts that come from your mod as soon as possible.
 
 ## Installing
+
+**From the Steam Workshop (easiest):** subscribe to [Guandan 掼蛋](https://steamcommunity.com/sharedfiles/filedetails/?id=3812889038). In the game, start a table, open **Games → Workshop**, and load it.
+
+**From this repository:**
 
 1. Download [`workshop/3138177412.json`](workshop/3138177412.json) and [`workshop/3138177412.png`](workshop/3138177412.png).
 2. Put both files in the Saves folder of Tabletop Simulator: `Documents/My Games/Tabletop Simulator/Saves`.

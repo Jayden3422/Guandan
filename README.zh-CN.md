@@ -8,6 +8,10 @@
   <a href="README.md">English</a> | <b>简体中文</b>
 </p>
 
+<p align="center">
+  <a href="https://steamcommunity.com/sharedfiles/filedetails/?id=3812889038"><b>在 Steam 创意工坊订阅</b></a>
+</p>
+
 这是一个带脚本的 [Tabletop Simulator](https://store.steampowered.com/app/286160/Tabletop_Simulator/) 掼蛋牌桌，四人、两副牌。它加入了一键发牌和收牌、只有自己看得见的出牌区、点牌出牌，以及像手机掼蛋那样把手牌按点数竖着摞起来的功能。
 
 本 mod 不判断掼蛋规则。它只负责摆牌，牌型和大小由玩家自己判断。
@@ -16,9 +20,13 @@
 
 本 mod 是在创意工坊 mod **[Guandan](https://steamcommunity.com/sharedfiles/filedetails/?id=3138177412)** 的基础上继续制作的。牌桌、牌、座位和原有的工具都来自原作。
 
-**致原作者：** 很抱歉，截至我把它发布到创意工坊的时候，我仍然没能联系上你。非常感谢你的分享精神。如果你有任何顾虑，请随时在 Steam 上加我好友告诉我，我会尽快重构来自你作品的那部分内容。
+**致原作者：** 很抱歉，截至我把它发布到创意工坊的时候，我仍然没能联系上你。非常感谢你的分享精神。如果你有任何顾虑，请随时在 Steam 上加我好友告诉我（我就是[本 mod 创意工坊页面](https://steamcommunity.com/sharedfiles/filedetails/?id=3812889038)的作者），我会尽快重构来自你作品的那部分内容。
 
 ## 安装
+
+**从 Steam 创意工坊（最方便）：** 订阅 [Guandan 掼蛋](https://steamcommunity.com/sharedfiles/filedetails/?id=3812889038)。进游戏开一张桌子，打开 **Games → Workshop**，载入它。
+
+**从本仓库：**
 
 1. 下载 [`workshop/3138177412.json`](workshop/3138177412.json) 和 [`workshop/3138177412.png`](workshop/3138177412.png)。
 2. 把两个文件放进 Tabletop Simulator 的存档文件夹：`文档/My Games/Tabletop Simulator/Saves`。
