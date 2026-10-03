@@ -782,6 +782,9 @@ function groupPlayArea(player_color)
 	stopPicking(player_color)
 	layoutGroups(player_color)
 
+	-- A stacked hand closes the gaps the grouped cards left.
+	layoutStack(player_color)
+
 end
 
 

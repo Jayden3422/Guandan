@@ -446,6 +446,20 @@ onGroupCardClick(three, "White", false)
 settle()
 check(three.locked, "and forgets them")
 
+-- 28. Grouping cards picked from a stacked hand closes the gaps they left in it.
+settle()
+objects = {}
+local s3, s4, s5, s6 = hand("White", "Three", "Club"), hand("White", "Four", "Club"), hand("White", "Five", "Club"), hand("White", "Six", "Club")
+onStackButtonClick(whitePlayer)
+check(near(x(s3), 0.03 - 3.45) and near(x(s4), 0.03 - 1.15) and near(x(s6), 0.03 + 3.45), "(a stacked hand of four columns)")
+onStackCardClick(s4, "White")
+onStackCardClick(s5, "White")
+settle()
+check(near(x(s3), 0.03 - 3.45) and near(x(s6), 0.03 + 3.45), "the columns stay put while cards are being picked")
+onGroupButtonClick(whitePlayer)
+check(s4.locked and near(x(s4), 0.03 - 11.7) and near(x(s5), x(s4)), "the picked cards become a group")
+check(near(x(s3), 0.03 - 1.15) and near(x(s6), 0.03 + 1.15), "and the columns left in the stacked hand close up")
+
 print(failures == 0 and "GLOBAL: ALL PASSED" or ("GLOBAL: " .. failures .. " FAILED"))
 if failures > 0 then error("test failures") end
 
