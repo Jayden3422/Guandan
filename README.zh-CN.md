@@ -28,9 +28,7 @@
 
 ## 基于的原作
 
-本 mod 是在创意工坊 mod **[Guandan](https://steamcommunity.com/sharedfiles/filedetails/?id=3138177412)** 的基础上继续制作的。牌桌、牌、座位和原有的工具都来自原作。
-
-**致原作者：** 很抱歉，截至我把它发布到创意工坊的时候，我仍然没能联系上您。非常感谢您的分享精神。如果您有任何顾虑，请随时在 Steam 上加我好友告诉我（我就是[本 mod 创意工坊页面](https://steamcommunity.com/sharedfiles/filedetails/?id=3812889038)的作者），我会尽快重构来自您作品的那部分内容。
+本 mod 是在创意工坊 mod **[Guandan](https://steamcommunity.com/sharedfiles/filedetails/?id=3138177412)** 的基础上继续制作的。牌桌、牌、座位和原有的工具都来自原作，本 mod 已获原作者授权。
 
 ## 安装
 

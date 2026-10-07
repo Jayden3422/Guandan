@@ -30,9 +30,7 @@ Taken with the game set to Chinese, so the buttons read 正序 (Sort ↑), 竖�
 
 ## Based on
 
-This mod is built on the Workshop mod **[Guandan](https://steamcommunity.com/sharedfiles/filedetails/?id=3138177412)**. The table, the cards, the seats and the original tools come from it, and everything here is a continuation of that work.
-
-**To the author of the original mod:** I am sorry that I had not managed to reach you by the time I published this on the Workshop. Thank you for sharing your work. If you have any concerns, please add me on Steam and tell me at any time (I am the author of [this mod's Workshop page](https://steamcommunity.com/sharedfiles/filedetails/?id=3812889038)), and I will rework the parts that come from your mod as soon as possible.
+This mod is built on the Workshop mod **[Guandan](https://steamcommunity.com/sharedfiles/filedetails/?id=3138177412)**. The table, the cards, the seats and the original tools come from it, and everything here is a continuation of that work, with the original author's permission.
 
 ## Installing
 
