@@ -87,7 +87,7 @@ function inHandZone(position)
 end
 
 local function newObject(guid, position)
-	local object = {guid = guid, held_by_color = nil, use_hands = true}
+	local object = {guid = guid, held_by_color = nil, use_hands = true, use_gravity = true}
 	local pos = Vector(position)
 	local rot = Vector(0, 0, 0)
 	object.getPosition = function() return pos:copy() end
@@ -152,18 +152,44 @@ function newDeck(cardIds, position)
 	return deck
 end
 
+-- A merged object is gone, and every script hears of it, unless the tests hold that back to send it later.
+withholdDestroys = false
+withheld = {}
+
+function vanish(object)
+	objects[object.guid] = nil
+	if withholdDestroys then
+		table.insert(withheld, object)
+	elseif onObjectDestroy then
+		onObjectDestroy(object)
+	end
+end
+
+function releaseDestroys()
+	local pending = withheld
+	withheld = {}
+	for _, object in ipairs(pending) do
+		if onObjectDestroy then onObjectDestroy(object) end
+	end
+	return #pending
+end
+
 -- Like the game's group(): everything ends up in the first deck object, or in a new one where the first card lies.
 function group(list)
 	local target = nil
 	for _, object in ipairs(list) do
 		if target == nil and object.name == "Deck" then target = object end
 	end
+	local first = nil
 	if target == nil then
-		target = newDeck({}, list[1].getPosition())
+		-- The first card turns into the new deck where it lies; it is not merged like the others.
+		first = list[1]
+		target = newDeck({first.cardId}, first.getPosition())
 		target.use_hands = true
+		vanish(first)
 	end
 	for _, object in ipairs(list) do
-		if object ~= target then
+		if object ~= target and object ~= first then
 			if object.name == "Deck" then
 				for _, cardId in ipairs(object.cardIds) do table.insert(target.cardIds, cardId) end
 			else
@@ -174,7 +200,13 @@ function group(list)
 				-- The card's state is saved into the deck as it is now: it must be an ordinary card again.
 				if object.locked or not object.use_hands then groupedBadState = true end
 			end
-			objects[object.guid] = nil
+			-- Like the game: an object already within 0.025 of the spot it is merged into is not removed,
+			-- although its cards were added. It lives on with its cards: they are now in the game twice.
+			if object.getPosition():distance(target.getPosition()) <= 0.025 then
+				groupedTooClose = true
+			else
+				vanish(object)
+			end
 		end
 	end
 	return {target}

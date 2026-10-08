@@ -22,8 +22,44 @@ releaseTime = 0.6
 -- How long to wait for the collected cards to form complete decks before giving up.
 collectTimeout = 10
 
+-- Merged cards fly into their deck and vanish on arrival.  Once the last one is gone, this much longer is
+-- allowed for the deck to settle before it is shuffled and the tool turns over.
+settleTime = 0.5
+
+-- After the tool turns over, clicks on it are ignored for this long, so a few quick clicks do not deal as well.
+clickCooldown = 1
+
+-- Where the cards wait above their pile before they are grouped:  this far above the pile point, this far apart.
+-- NOTE:  An object that is already within 0.025 of the spot it is merged into is not removed by the game,
+-- and its cards end up twice.  So nothing waiting to be merged may share a spot with anything else.
+cardsHeight = 1.5
+cardSpacing = 0.05
+-- Deck objects other than the one on the pile wait above the cards, this far apart.
+decksHeight = 7.5
+deckSpacing = 0.3
+
+-- Objects lower than this are under the table.
+tableLevel = 0.5
+
+-- Before a deck is dealt, it is put back on its pile with a short glide, which also restores the physics of a deck
+-- that was left with no collision or gravity (a deck that fell through the table, say).  The deal follows this much later.
+settleDelay = 1
+
 -- True while a collection is under way.
 local collecting = false
+
+-- Until when clicks on the tool are ignored.
+local busyUntil = nil
+
+-- How many cards of each deck have been put above its pile during this collection, by deck ID.
+local placed = {}
+
+-- How many merged objects are still flying into their deck.  Each one vanishes on arrival.
+local mergesPending = 0
+
+-- What to do once the collection is done:  turn the tool over (started from its collect side), deal (started from Deal).
+local flipWhenDone = true
+local dealWhenDone = false
 
 -- Until when a second click confirms collecting the cards the players still hold.
 local confirmUntil = nil
@@ -58,14 +94,14 @@ end
 
 
 -- Where the next card of a deck waits to be grouped:  above the deck's pile, each one a little higher than the last
--- and clear of a deck object lying on the pile.  counts keeps how many were placed so far, by deck ID.
-function nextPilePosition(card, counts)
+-- and clear of a deck object lying on the pile.
+function nextPilePosition(card)
 
 	local deckId = Global.call("getDeckId", {object = card}) or 0
 	local position = Global.call("getPilePosition", {object = card})
 
-	counts[deckId] = (counts[deckId] or 0) + 1
-	position.y = position.y + 1.5 + 0.02 * counts[deckId]
+	placed[deckId] = (placed[deckId] or 0) + 1
+	position.y = position.y + cardsHeight + cardSpacing * placed[deckId]
 
 	return position
 
@@ -92,7 +128,7 @@ function releaseCards()
 	-- Stacked hands, card picking and the plays on the table all end here.
 	Global.call("onCollectCards")
 
-	local counts = {}
+	placed = {}
 
 	for i, object in pairs(getObjects()) do
 		if object.held_by_color == nil then
@@ -108,7 +144,7 @@ function releaseCards()
 				-- A locked card is let go by the hand zone holding it, and stays where it is put: it neither falls nor merges.
 				object.setLock(true)
 				object.setRotation(Vector(0, 0, 180))
-				object.setPosition(nextPilePosition(object, counts))
+				object.setPosition(nextPilePosition(object))
 
 			end
 
@@ -123,45 +159,88 @@ function gatherDecks()
 
 	-- The cards and deck objects of each deck, by deck ID.
 	local groups = {}
-	local counts = {}
 
 	for i, object in pairs(getObjects()) do
 		if (object.type == "Card" or object.name == "Deck") and object.held_by_color == nil then
 			local deckId = Global.call("getDeckId", {object = object})
 			if deckId ~= nil then
-
-				-- Everything is brought to the pile first, so that grouping only moves cards a short way, away from any hand zone.
-				if object.type == "Card" then
-					object.setRotation(Vector(0, 0, 180))
-					object.setPosition(nextPilePosition(object, counts))
-					-- The cards go into the deck as they are now: unlocked and able to be held in a hand, ready to be dealt.
-					object.setLock(false)
-				else
-					-- A deck must not be caught by a hand zone.
-					object.use_hands = false
-					object.setRotation(Vector(0, 0, 180))
-					object.setPosition(Global.call("getPilePosition", {object = object}))
-				end
-
 				groups[deckId] = groups[deckId] or {}
 				table.insert(groups[deckId], object)
-
 			end
 		end
 	end
 
 	for deckId, objects in pairs(groups) do
 
-		local pile = objects[1]
-		if #objects > 1 then
-			pile = group(objects)[1]
+		local pilePosition = Global.call("getPilePosition", {object = objects[1]})
+
+		-- The deck object everything else is merged into:  the one lying on the pile, else one lying on the table,
+		-- else any.  A deck under the table or in the air is in no state to keep.
+		local pile = nil
+		local pileScore = -1
+		for _, object in ipairs(objects) do
+			if object.name == "Deck" then
+				local position = object.getPosition()
+				local dx = position.x - pilePosition.x
+				local dz = position.z - pilePosition.z
+				local score = 0
+				if position.y > tableLevel then
+					score = 1
+					if dx * dx + dz * dz < 1 then
+						score = 2
+					end
+				end
+				if score > pileScore then
+					pile = object
+					pileScore = score
+				end
+			end
+		end
+
+		-- Everything is brought above the pile first, so that grouping only moves cards a short way, away from any hand zone.
+		-- Each object gets a spot of its own, clear of the one it is merged into (see cardSpacing).
+		local ordered = {}
+		local decks = 0
+
+		-- The deck kept goes to the pile point: being the one merged into, its old spot does not matter.
+		if pile ~= nil then
+			pile.use_hands = false
+			pile.setRotation(Vector(0, 0, 180))
+			pile.setPosition(pilePosition)
+			table.insert(ordered, pile)
+		end
+
+		for _, object in ipairs(objects) do
+			if object.type == "Card" then
+				object.setRotation(Vector(0, 0, 180))
+				-- The cards taken from the players are above the pile already (locked); the others are put there now.
+				if not object.getLock() then
+					object.setPosition(nextPilePosition(object))
+				end
+				-- The cards go into the deck as they are now: unlocked and able to be held in a hand, ready to be dealt.
+				object.setLock(false)
+				table.insert(ordered, object)
+			elseif object.guid ~= pile.guid then
+				object.use_hands = false
+				object.setRotation(Vector(0, 0, 180))
+				object.setPosition(Vector(pilePosition.x, pilePosition.y + decksHeight + deckSpacing * decks, pilePosition.z))
+				decks = decks + 1
+				table.insert(ordered, object)
+			end
+		end
+
+		local result = ordered[1]
+		if #ordered > 1 then
+			-- The first deck object in the list is the one the game keeps; every other object vanishes once it has flown in.
+			mergesPending = mergesPending + #ordered - 1
+			result = group(ordered)[1]
 		end
 
 		-- A deck object newly made of loose cards appears where they were: put it on the pile as well.
-		if pile ~= nil and pile.name == "Deck" then
-			pile.use_hands = false
-			pile.setRotation(Vector(0, 0, 180))
-			pile.setPosition(Global.call("getPilePosition", {object = pile}))
+		if result ~= nil and result.name == "Deck" then
+			result.use_hands = false
+			result.setRotation(Vector(0, 0, 180))
+			result.setPosition(pilePosition)
 		end
 
 	end
@@ -169,7 +248,8 @@ function gatherDecks()
 end
 
 
--- True once every card has ended up in a complete deck.
+-- True once every card has ended up in a deck of full size.  A deck with too many cards counts as settled too,
+-- so that finishing can report it.
 function allCollected()
 
 	local decks = 0
@@ -179,7 +259,7 @@ function allCollected()
 			return false
 		end
 		if object.name == "Deck" then
-			if object.getQuantity() ~= deckSize then
+			if object.getQuantity() < deckSize then
 				return false
 			end
 			decks = decks + 1
@@ -191,11 +271,80 @@ function allCollected()
 end
 
 
+-- A merged object has flown into its deck and is gone.
+function onObjectDestroy(object)
+
+	if collecting and mergesPending > 0 then
+		mergesPending = mergesPending - 1
+	end
+
+end
+
+
+-- True once the merged objects have all flown in.
+function allMerged()
+
+	return mergesPending == 0 and allCollected()
+
+end
+
+
+-- Put a deck on its pile with a short glide.  When the glide ends the game switches the deck's collision back on,
+-- and gravity is switched on here: this mends a deck that was left without either.
+function settleDeck(deck)
+
+	deck.use_hands = false
+	deck.use_gravity = true
+	deck.setRotationSmooth(Vector(0, 0, 180), false, true)
+	deck.setPositionSmooth(Global.call("getPilePosition", {object = deck}), false, true)
+
+end
+
+
+-- Last step of collecting:  shuffle the complete decks, then turn the tool to its deal side or deal.
+function finishCollecting()
+
+	collecting = false
+	busyUntil = Time.time + clickCooldown
+
+	for i, object in pairs(getObjects()) do
+		if object.name == "Deck" then
+			local extra = object.getQuantity() - deckSize
+			if extra > 0 then
+				broadcastToAll("{en}A deck has " .. extra .. " cards too many (" .. object.getQuantity() .. " in all): please check it{zh}有一堆牌多了 " .. extra .. " 张（共 " .. object.getQuantity() .. " 张），请检查", {1,1,1})
+			elseif extra == 0 then
+				object.shuffle()
+			end
+			settleDeck(object)
+		end
+	end
+
+	if flipWhenDone then
+		self.flip()
+	end
+
+	if dealWhenDone then
+		dealWhenDone = false
+		dealSelectedDeck()
+	end
+
+end
+
+
+-- Collect every card.  Called from the tool's collect side, and by dealCards when the deck to deal is not complete.
 function collectCards()
 
-	if collecting then
+	if collecting or (busyUntil ~= nil and Time.time < busyUntil) then
 		return
 	end
+
+	flipWhenDone = true
+	startCollecting()
+
+end
+
+
+function startCollecting()
 
 	-- Taking the cards the players still hold ends their round: ask for a second click first.
 	local held = false
@@ -214,42 +363,75 @@ function collectCards()
 
 	confirmUntil = nil
 	collecting = true
+	mergesPending = 0
+	broadcastToAll("{en}Collecting the cards...{zh}正在收牌…", {1,1,1})
 
 	releaseCards()
 	Wait.time(gatherDecks, releaseTime)
 
-	-- Once the cards have formed complete decks: shuffle them and turn the tool to its deal side.
+	-- Once the cards have formed complete decks and the merged ones have flown in, finish.
 	Wait.condition(
 		function()
-			collecting = false
-			for i, object in pairs(getObjects()) do
-				if object.name == "Deck" and object.getQuantity() == deckSize then
-					object.shuffle()
-				end
-			end
-			self.flip()
+			Wait.time(finishCollecting, settleTime)
 		end,
-		allCollected,
+		allMerged,
 		collectTimeout,
 		function()
-			collecting = false
-			broadcastToAll("{en}The cards did not form complete decks (a card may be held or missing): sort that out and click again{zh}牌没有收齐成整副（可能有牌被拿着或缺牌），处理后再点一次", {1,1,1})
+			-- The decks are complete but the vanishing of the merged objects was not seen: carry on anyway.
+			if allCollected() then
+				finishCollecting()
+			else
+				collecting = false
+				dealWhenDone = false
+				broadcastToAll("{en}The cards did not form complete decks (a card may be held or missing): sort that out and click again{zh}牌没有收齐成整副（可能有牌被拿着或缺牌），处理后再点一次", {1,1,1})
+			end
 		end
 	)
 
 end
 
 
+-- Deal the deck chosen with the Deck Selector tool.  If it is not complete, collect the cards first, then deal.
 function dealCards()
 
-	-- The deck chosen with the Deck Selector tool:  {id = , name = {en = , zh = }}
-	local selected = nil
-	local selector = getObjectFromGUID(deckSelectorGuid)
-	if selector ~= nil then
-		selected = selector.call("getSelectedDeck")
+	if collecting or (busyUntil ~= nil and Time.time < busyUntil) then
+		return
 	end
 
-	-- Find that deck, complete.
+	if dealSelectedDeck() then
+		return
+	end
+
+	local selected = selectedDeck()
+	broadcastToAll("{en}" .. (selected and selected.name.en or "The deck") .. " is not complete: collecting the cards first{zh}" .. (selected and selected.name.zh or "牌") .. "不是完整的一副，先收牌再发", {1,1,1})
+
+	-- The tool stays on its deal side; the deal follows the collection.
+	flipWhenDone = false
+	dealWhenDone = true
+	startCollecting()
+
+end
+
+
+-- The deck chosen with the Deck Selector tool:  {id = , name = {en = , zh = }}, or nil without the tool.
+function selectedDeck()
+
+	local selector = getObjectFromGUID(deckSelectorGuid)
+
+	if selector == nil then
+		return nil
+	end
+
+	return selector.call("getSelectedDeck")
+
+end
+
+
+-- Deal the chosen deck if it is complete, and turn the tool to its collect side.  Returns whether a deck was found.
+-- The deck first settles on its pile; the deal follows a moment later.
+function dealSelectedDeck()
+
+	local selected = selectedDeck()
 	local deck = nil
 
 	for i, object in pairs(getObjects()) do
@@ -262,15 +444,20 @@ function dealCards()
 	end
 
 	if deck == nil then
-		broadcastToAll("{en}" .. (selected and selected.name.en or "The deck") .. " is not complete yet: collect the cards first{zh}" .. (selected and selected.name.zh or "牌") .. "还没有收齐成一整副，先收牌", {1,1,1})
-		return
+		return false
 	end
 
-	deck.shuffle()
-	for _,playerColor in ipairs(getSeatedPlayers()) do
-		deck.deal(dealCount, playerColor)
-	end
+	settleDeck(deck)
+	busyUntil = Time.time + settleDelay + clickCooldown
 
-	self.flip()
+	Wait.time(function()
+		deck.shuffle()
+		for _,playerColor in ipairs(getSeatedPlayers()) do
+			deck.deal(dealCount, playerColor)
+		end
+		self.flip()
+	end, settleDelay)
+
+	return true
 
 end

@@ -55,7 +55,7 @@ My friends and I all play in Simplified Chinese. I have added the English texts,
 The table has four seats: White, Green, Purple and Orange.
 
 1. **Choose a deck.** The table has two decks, one with white card faces and one with black ones. The Deck Selector tile in the middle of the table shows the back of the deck that will be dealt. Click it to switch.
-2. **Deal.** Click the **Deal** tile in the middle of the table. Every seated player gets 27 cards, and the tile flips to **Collect Cards**.
+2. **Deal.** Click the **Deal** tile in the middle of the table. Every seated player gets 27 cards, and the tile flips to **Collect Cards**. If the chosen deck is not complete, the cards are collected first and then dealt.
 3. **Play.** See the buttons below.
 4. **Collect.** Click **Collect Cards**. Every card goes back to its deck's pile in the corner of the table, the decks are shuffled, and the tile flips back to **Deal**. If any player still holds cards, a first click only warns; click again within 5 seconds to collect.
 
